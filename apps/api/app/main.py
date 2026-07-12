@@ -32,11 +32,9 @@ def on_startup() -> None:
     from app.db.session import Base, engine
     from app import models  # noqa: F401
 
-    # Ensure schema exists for local/dev if migrations haven't been run yet
-    Base.metadata.create_all(bind=engine)
-
-    # Lightweight SQLite column add for existing local DBs
+    # Local/dev only — production schema comes from Alembic (start_api.sh)
     if settings.is_sqlite:
+        Base.metadata.create_all(bind=engine)
         with engine.begin() as conn:
             cols = {
                 row[1]
