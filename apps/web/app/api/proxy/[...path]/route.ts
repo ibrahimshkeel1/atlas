@@ -1,3 +1,4 @@
+import "@/lib/dom-polyfill";
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser, jsonError } from "@/lib/session";
 import * as api from "@/lib/atlas-api";
