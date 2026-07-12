@@ -18,11 +18,9 @@
 apps/web/.env*.local
 data/
 
-# Private bank-eval fixtures (real/redacted customer statements — never commit)
+# Private bank-eval fixtures (never commit)
 sample-data/bank-eval/private/**
 !sample-data/bank-eval/private/README.md
-M|*.pdf
-/M|*.pdf
 
 # Local user statement PDFs
 /M|*.pdf
