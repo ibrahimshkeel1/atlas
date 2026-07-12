@@ -168,7 +168,7 @@ export default function DocumentReviewPage() {
 
   useEffect(() => {
     if (selected?.page_number) setPdfPage(selected.page_number);
-  }, [selected?.id, selected?.page_number]);
+  }, [selected?.id, selected?.page_number, selected?.source_meta]);
 
   useEffect(() => {
     if (!selectedId || !listRef.current) return;

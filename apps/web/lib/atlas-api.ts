@@ -122,7 +122,7 @@ async function persistExtractedDocument(
       .limit(1)
   )[0];
 
-  for (const tx of extracted.transactions) {
+  for (const [i, tx] of extracted.transactions.entries()) {
     await db.insert(transactions).values({
       organizationId: user.organizationId,
       clientId,
@@ -134,10 +134,14 @@ async function persistExtractedDocument(
       credit: tx.credit,
       balance: tx.balance,
       confidenceScore: String(tx.confidence),
-      needsReview: tx.confidence < 0.7 || !other,
+      needsReview: true,
       extractionSource: extracted.method,
       pageNumber: tx.page_number,
       sourceMetaJson: tx.source_meta,
+      rawJson: {
+        source_index: tx.source_index ?? i,
+        page_hint: tx.page_hint ?? tx.page_number,
+      },
     });
   }
 

@@ -6,6 +6,7 @@ import {
   attachSourceMeta,
   buildPageLayouts,
   buildTextFallbackLayouts,
+  orderedTextFromLayouts,
   type Pdf2JsonData,
 } from "@/lib/pdf-layout";
 
@@ -40,7 +41,6 @@ function resolvePdfParserCtor(mod: unknown): PdfParserCtor {
 }
 
 async function loadPdfParser(): Promise<PdfParserCtor> {
-  // 1) Dynamic import — works when pdf2json is serverExternalPackages
   try {
     const mod = await import("pdf2json");
     return resolvePdfParserCtor(mod.default ?? mod);
@@ -48,7 +48,6 @@ async function loadPdfParser(): Promise<PdfParserCtor> {
     /* try require */
   }
 
-  // 2) createRequire from app root (Vercel cwd = apps/web)
   try {
     const req = createRequire(resolve(process.cwd(), "package.json"));
     return resolvePdfParserCtor(req("pdf2json"));
@@ -56,7 +55,6 @@ async function loadPdfParser(): Promise<PdfParserCtor> {
     /* try import.meta */
   }
 
-  // 3) createRequire relative to this module
   try {
     const { dirname, join } = await import("node:path");
     const { fileURLToPath } = await import("node:url");
@@ -81,7 +79,9 @@ async function parsePdfBuffer(buffer: Buffer): Promise<{ text: string; pdfData: 
       reject(new Error(msg));
     });
     parser.on("pdfParser_dataReady", (pdfData) => {
-      const text = parser.getRawTextContent().trim();
+      const layouts = buildPageLayouts(pdfData);
+      const ordered = orderedTextFromLayouts(layouts);
+      const text = ordered.trim() || parser.getRawTextContent().trim();
       if (text.length < 20) {
         reject(new Error("Could not extract text from this PDF"));
         return;
@@ -99,31 +99,39 @@ export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
 
 export async function extractTransactionsFromPdf(buffer: Buffer): Promise<PdfExtraction> {
   const { text, pdfData } = await parsePdfBuffer(buffer);
-  const parsed = parseBankStatement(text);
-  const pageCount = pdfData.Pages?.length || 1;
+  let layouts = buildPageLayouts(pdfData);
+  const layoutLines = layouts.reduce((n, l) => n + l.lines.length, 0);
 
-  function enrich(layouts: ReturnType<typeof buildPageLayouts>): EnrichedTx[] {
+  if (!layoutLines) {
+    layouts = buildTextFallbackLayouts(text, pdfData.Pages?.length || 1);
+  }
+
+  const parsed = parseBankStatement(text, layouts);
+  const pageCount = pdfData.Pages?.length || layouts.length || 1;
+
+  function enrich(layoutsForMatch: typeof layouts): EnrichedTx[] {
     return parsed.transactions.map((tx) => {
-      const { page_number, source_meta } = attachSourceMeta(layouts, tx);
-      return { ...tx, page_number, source_meta };
+      const { page_number, source_meta } = attachSourceMeta(layoutsForMatch, {
+        transaction_date: tx.transaction_date,
+        description: tx.description,
+        debit: tx.debit,
+        credit: tx.credit,
+        page_hint: tx.page_hint ?? null,
+      });
+      return {
+        ...tx,
+        page_number: page_number ?? tx.page_hint ?? null,
+        source_meta,
+      };
     });
   }
 
-  let layouts = buildPageLayouts(pdfData);
-  let transactions = enrich(layouts);
-  const layoutLines = layouts.reduce((n, l) => n + l.lines.length, 0);
-  let withBbox = transactions.filter((t) => t.source_meta?.bbox_norm).length;
-
-  if (!layoutLines || withBbox === 0) {
-    layouts = buildTextFallbackLayouts(text, pageCount);
-    transactions = enrich(layouts);
-    withBbox = transactions.filter((t) => t.source_meta?.bbox_norm).length;
-  }
+  const transactions = enrich(layouts);
 
   return {
     ...parsed,
     transactions,
     text_chars: text.length,
-    page_count: pageCount || layouts.length || 0,
+    page_count: pageCount,
   };
 }

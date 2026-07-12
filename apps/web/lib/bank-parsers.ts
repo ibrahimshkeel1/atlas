@@ -5,6 +5,8 @@ export type ParsedTx = {
   credit: string | null;
   balance: string | null;
   confidence: number;
+  source_index?: number;
+  page_hint?: number | null;
 };
 
 export type ParseResult = {
@@ -16,6 +18,33 @@ export type ParseResult = {
 function money(v: string | undefined | null): string | null {
   if (!v) return null;
   return v.replace(/,/g, "");
+}
+
+const MONTH_MAP: Record<string, string> = {
+  jan: "01",
+  feb: "02",
+  mar: "03",
+  apr: "04",
+  may: "05",
+  jun: "06",
+  jul: "07",
+  aug: "08",
+  sep: "09",
+  oct: "10",
+  nov: "11",
+  dec: "12",
+};
+
+/** Parse "01 Jun 2026" without timezone shifting (Date.toISOString is UTC). */
+function parseStatementDate(raw: string): string | null {
+  const m = /(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{4})/i.exec(
+    raw
+  );
+  if (!m) return null;
+  const mm = MONTH_MAP[m[2].slice(0, 3).toLowerCase()];
+  if (!mm) return null;
+  const dd = String(Number(m[1])).padStart(2, "0");
+  return `${m[3]}-${mm}-${dd}`;
 }
 
 function makeTx(
@@ -55,9 +84,8 @@ function parseMeezan(text: string): ParseResult {
     if (line.length < 12 || !/Rs\.?|PKR/i.test(line)) continue;
     const m = lineRe.exec(line);
     if (!m) continue;
-    const d = new Date(m[1]);
-    if (Number.isNaN(d.getTime())) continue;
-    const iso = d.toISOString().slice(0, 10);
+    const iso = parseStatementDate(m[1]);
+    if (!iso) continue;
     const amount = money(m[4]);
     const sign = m[3];
     const debit = sign === "-" ? amount : null;
@@ -105,36 +133,82 @@ function parseUbl(text: string): ParseResult {
 
 function parseNayapay(text: string): ParseResult {
   const lineRe =
-    /(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4})\s+(.+?)([+-])Rs\.\s*([\d,]+\.?\d*)\s+Rs\.\s*([\d,]+\.\d{2})/gi;
+    /(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4})(?:\s+\d{1,2}:\d{2}\s*(?:AM|PM))?\s+(.+?)\s+([+-])Rs\.\s*([\d,]+\.?\d*)\s+Rs\.\s*([\d,]+\.\d{2})/gi;
   const seen = new Set<string>();
   const txs: ParsedTx[] = [];
   let m: RegExpExecArray | null;
   while ((m = lineRe.exec(text))) {
-    const d = new Date(m[1]);
-    if (Number.isNaN(d.getTime())) continue;
-    const iso = d.toISOString().slice(0, 10);
+    const iso = parseStatementDate(m[1]);
+    if (!iso) continue;
     const sign = m[3];
     const amount = money(m[4]);
     const debit = sign === "-" ? amount : null;
     const credit = sign === "+" ? amount : null;
     const desc = m[2]
       .replace(/\s{2,}/g, " ")
-      .replace(/^(?:Raast\s+(?:In|Out)|POS|Peer to Peer|Failed Int\.)\s+/i, "")
+      .replace(/^(?:Raast\s+(?:In|Out)|POS|Peer to Peer|Failed Int\.|Card Authorization)\s+/i, "")
+      .replace(/\s+Visa\s+x{4}\d+\s*$/i, "")
       .trim();
     const tx = makeTx(iso, desc, debit, credit, money(m[5]), 0.82, seen);
-    if (tx) txs.push(tx);
+    if (tx) txs.push({ ...tx, source_index: txs.length });
   }
   return { bank_name: txs.length ? "NayaPay" : null, transactions: txs, method: "nayapay" };
 }
 
-export function parseBankStatement(text: string): ParseResult {
+/** Walk pdf2json layout lines in visual order (matches statement top-to-bottom). */
+export function parseNayapayFromLayouts(
+  layouts: { page: number; lines: { text: string }[] }[]
+): ParseResult {
+  const lineRe =
+    /(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4})(?:\s+\d{1,2}:\d{2}\s*(?:AM|PM))?\s+(.+?)\s+([+-])Rs\.\s*([\d,]+\.?\d*)\s+Rs\.\s*([\d,]+\.\d{2})/i;
+  const seen = new Set<string>();
+  const txs: ParsedTx[] = [];
+  for (const layout of layouts) {
+    for (const line of layout.lines) {
+      const m = lineRe.exec(line.text);
+      if (!m) continue;
+      const iso = parseStatementDate(m[1]);
+      if (!iso) continue;
+      const sign = m[3];
+      const amount = money(m[4]);
+      const debit = sign === "-" ? amount : null;
+      const credit = sign === "+" ? amount : null;
+      const desc = m[2]
+        .replace(/\s{2,}/g, " ")
+        .replace(/^(?:Raast\s+(?:In|Out)|POS|Peer to Peer|Failed Int\.|Card Authorization)\s+/i, "")
+        .replace(/\s+Visa\s+x{4}\d+\s*$/i, "")
+        .trim();
+      const tx = makeTx(iso, desc, debit, credit, money(m[5]), 0.82, seen);
+      if (tx) txs.push({ ...tx, source_index: txs.length, page_hint: layout.page });
+    }
+  }
+  return { bank_name: txs.length ? "NayaPay" : null, transactions: txs, method: "nayapay" };
+}
+
+export function parseBankStatement(
+  text: string,
+  layouts?: { page: number; lines: { text: string }[] }[]
+): ParseResult {
   const low = text.toLowerCase();
+  const isNayapay = low.includes("nayapay") || low.includes("naya pay");
+
+  if (isNayapay) {
+    const layoutNayapay = layouts ? parseNayapayFromLayouts(layouts) : null;
+    const textNayapay = parseNayapay(text);
+    const candidates = [layoutNayapay, textNayapay].filter(
+      (c): c is ParseResult => !!c && c.transactions.length > 0
+    );
+    if (candidates.length) {
+      candidates.sort((a, b) => b.transactions.length - a.transactions.length);
+      return candidates[0]!;
+    }
+    return { bank_name: "NayaPay", transactions: [], method: "nayapay" };
+  }
+
   const candidates = [
-    low.includes("nayapay") || low.includes("naya pay") ? parseNayapay(text) : null,
     low.includes("meezan") ? parseMeezan(text) : null,
     low.includes("hbl") || low.includes("habib") ? parseHbl(text) : null,
     low.includes("ubl") || low.includes("united bank") ? parseUbl(text) : null,
-    parseNayapay(text),
     parseMeezan(text),
     parseHbl(text),
     parseUbl(text),

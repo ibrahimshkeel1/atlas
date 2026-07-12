@@ -23,6 +23,7 @@ export type TxForLayout = {
   description: string;
   debit?: string | null;
   credit?: string | null;
+  page_hint?: number | null;
 };
 
 function decodeText(runs: PdfTextRun[] | undefined): string {
@@ -81,6 +82,17 @@ export function buildPageLayouts(pdfData: Pdf2JsonData): PageLayout[] {
     layouts.push({ page: i + 1, width, height, lines });
   }
   return layouts;
+}
+
+/** Statement text in visual top-to-bottom order (pdf2json getRawTextContent is reversed). */
+export function orderedTextFromLayouts(layouts: PageLayout[]): string {
+  const parts: string[] = [];
+  for (const layout of layouts) {
+    for (const line of layout.lines) {
+      if (line.text.trim()) parts.push(line.text);
+    }
+  }
+  return parts.join("\n");
 }
 
 /** Fallback when pdf2json returns text but no positioned glyphs (some serverless builds). */
@@ -253,7 +265,15 @@ export function attachSourceMeta(
   const amountHits = amountNeedles(tx.debit, tx.credit);
   const dates = dateNeedles(tx.transaction_date);
 
-  for (const layout of layouts) {
+  const layoutOrder =
+    tx.page_hint != null
+      ? [
+          ...layouts.filter((l) => l.page === tx.page_hint),
+          ...layouts.filter((l) => l.page !== tx.page_hint),
+        ]
+      : layouts;
+
+  for (const layout of layoutOrder) {
     const hit = findLineHit(layout, descNeedles);
     if (hit) {
       return {
@@ -263,7 +283,7 @@ export function attachSourceMeta(
     }
   }
 
-  for (const layout of layouts) {
+  for (const layout of layoutOrder) {
     const hit = findLineHit(layout, amountHits);
     if (hit) {
       return {
@@ -274,7 +294,7 @@ export function attachSourceMeta(
   }
 
   let best: { score: number; layout: PageLayout; line: PageLine; needle: string } | null = null;
-  for (const layout of layouts) {
+  for (const layout of layoutOrder) {
     for (const dn of dates) {
       const dl = dn.toLowerCase();
       for (const line of expandedSearchLines(layout)) {
@@ -298,5 +318,5 @@ export function attachSourceMeta(
     };
   }
 
-  return { page_number: null, source_meta: null };
+  return { page_number: tx.page_hint ?? null, source_meta: null };
 }

@@ -106,7 +106,7 @@ export async function listTransactionsExtended(user: SessionUser, params: URLSea
   let orderBy;
   if (sort === "date_asc") orderBy = asc(transactions.transactionDate);
   else if (sort === "page_asc")
-    orderBy = sql`${transactions.pageNumber} asc nulls last, ${transactions.transactionDate} asc`;
+    orderBy = sql`coalesce((${transactions.rawJson}->>'source_index')::int, 2147483647) asc, ${transactions.pageNumber} asc nulls last, ${transactions.transactionDate} asc`;
   else if (sort === "amount_desc")
     orderBy = sql`coalesce(${transactions.debit},0)+coalesce(${transactions.credit},0) desc`;
   else if (sort === "amount_asc")
