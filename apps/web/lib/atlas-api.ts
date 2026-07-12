@@ -16,7 +16,6 @@ import {
   verifyPassword,
 } from "@/lib/auth-server";
 import { downloadPdf, uploadPdf } from "@/lib/storage";
-import { extractTransactionsFromPdf } from "@/lib/pdf-extract";
 import type { SessionUser } from "@/lib/session";
 
 const SYSTEM_CATEGORIES = [
@@ -219,6 +218,7 @@ export async function uploadDocument(user: SessionUser, file: File, force = fals
     .returning();
 
   try {
+    const { extractTransactionsFromPdf } = await import("@/lib/pdf-extract");
     const extracted = await extractTransactionsFromPdf(bytes);
     if (!extracted.transactions.length) {
       await db
@@ -419,6 +419,7 @@ export async function reprocessDocument(user: SessionUser, id: string) {
 
   try {
     const bytes = await downloadPdf(doc.s3Key);
+    const { extractTransactionsFromPdf } = await import("@/lib/pdf-extract");
     const extracted = await extractTransactionsFromPdf(bytes);
     if (!extracted.transactions.length) {
       await db

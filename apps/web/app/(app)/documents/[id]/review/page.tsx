@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -17,10 +18,7 @@ import {
 } from "@/components/category-select";
 import { RememberRulePrompt } from "@/components/remember-rule-prompt";
 import { ExportWorkingPapersButtons } from "@/components/export-working-papers";
-import {
-  PdfHighlightViewer,
-  bboxFromSourceMeta,
-} from "@/components/pdf-highlight-viewer";
+import { bboxFromSourceMeta } from "@/components/pdf-highlight-viewer";
 import {
   clientApi,
   type Category,
@@ -29,6 +27,20 @@ import {
   type Transaction,
 } from "@/lib/api";
 import { cn, formatMoney } from "@/lib/utils";
+
+const PdfHighlightViewer = dynamic(
+  () =>
+    import("@/components/pdf-highlight-viewer").then((m) => m.PdfHighlightViewer),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex min-h-[320px] flex-1 items-center justify-center text-sm text-muted-foreground">
+        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        Loading PDF viewer…
+      </div>
+    ),
+  }
+);
 
 function confidenceHint(score: number | string | null | undefined) {
   if (score == null) return { label: "Unknown confidence", tone: "text-muted-foreground" };

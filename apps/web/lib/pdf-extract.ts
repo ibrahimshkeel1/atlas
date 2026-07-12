@@ -3,9 +3,11 @@ import { parseBankStatement, type ParseResult } from "@/lib/bank-parsers";
 
 const require = createRequire(import.meta.url);
 
+type PdfParseFn = (buf: Buffer) => Promise<{ text: string; numpages: number }>;
+
 export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
-  // pdf-parse is CJS; load via createRequire for Next/Turbopack
-  const pdfParse = require("pdf-parse") as (buf: Buffer) => Promise<{ text: string; numpages: number }>;
+  // pdf-parse v1 avoids pdfjs v5's DOMMatrix requirement on Vercel serverless.
+  const pdfParse = require("pdf-parse") as PdfParseFn;
   const result = await pdfParse(buffer);
   return result.text || "";
 }

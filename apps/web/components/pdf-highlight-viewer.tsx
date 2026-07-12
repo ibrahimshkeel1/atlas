@@ -45,7 +45,7 @@ export function PdfHighlightViewer({
       setLoading(true);
       setError("");
       try {
-        const pdfjs = await import("pdfjs-dist");
+        const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
         pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
 
         if (pdfRef.current) {
