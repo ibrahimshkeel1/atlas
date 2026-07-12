@@ -3,8 +3,16 @@ from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-ROOT = Path(__file__).resolve().parents[4]
-API_DIR = Path(__file__).resolve().parents[2]
+# config.py lives at: <api_root>/app/core/config.py
+# Local monorepo: <repo>/apps/api/app/core/config.py
+# Docker image:   /app/app/core/config.py  (api files copied to /app)
+_CONFIG_FILE = Path(__file__).resolve()
+API_DIR = _CONFIG_FILE.parents[2]
+if API_DIR.name == "api" and API_DIR.parent.name == "apps":
+    ROOT = API_DIR.parent.parent
+else:
+    # Container / flat deploy layout
+    ROOT = API_DIR
 
 
 class Settings(BaseSettings):
