@@ -1,21 +1,26 @@
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { getAccessToken } from "@/lib/auth-cookies";
-import { apiFetch, type MeResponse } from "@/lib/api";
+import { me } from "@/lib/atlas-api";
+import { requireUser } from "@/lib/session";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const token = await getAccessToken();
   if (!token) redirect("/login");
 
-  let me: MeResponse | null = null;
+  let orgName: string | undefined;
+  let userName: string | undefined;
   try {
-    me = await apiFetch<MeResponse>("/auth/me", { token });
+    const user = await requireUser();
+    const profile = await me(user);
+    orgName = profile.organization.name;
+    userName = profile.user.full_name;
   } catch {
     redirect("/login");
   }
 
   return (
-    <AppShell orgName={me?.organization.name} userName={me?.user.full_name}>
+    <AppShell orgName={orgName} userName={userName}>
       {children}
     </AppShell>
   );

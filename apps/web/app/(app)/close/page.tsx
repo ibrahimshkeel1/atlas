@@ -114,7 +114,7 @@ export default function MonthClosePage() {
             className="w-40"
           />
         </div>
-        <Button variant="outline" onClick={() => load()} disabled={busy}>
+        <Button variant="outline" onClick={() => void load()} disabled={busy}>
           Refresh
         </Button>
       </div>

@@ -1,5 +1,13 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
-  "regions": ["iad1"]
+  "regions": ["iad1"],
+  "functions": {
+    "app/api/proxy/**/*.ts": {
+      "maxDuration": 60,
+      "memory": 1024
+    },
+    "app/api/auth/**/*.ts": {
+      "maxDuration": 30
+    }
+  }
 }

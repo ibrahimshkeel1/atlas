@@ -111,7 +111,17 @@ export async function apiFetch<T>(
   options: RequestInit & { token?: string } = {}
 ): Promise<T> {
   const { token, headers, ...rest } = options;
-  const res = await fetch(`${getApiUrl()}/api/v1${path}`, {
+  // Prefer same-origin Next API when running on Vercel (no external FastAPI)
+  const base =
+    process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : process.env.NEXT_PUBLIC_APP_URL || getApiUrl();
+  const useLocal = !process.env.API_URL || process.env.ATLAS_API_MODE === "vercel";
+  const url = useLocal
+    ? `${(process.env.NEXT_PUBLIC_APP_URL || base).replace(/\/$/, "")}/api/proxy${path}`
+    : `${getApiUrl()}/api/v1${path}`;
+
+  const res = await fetch(url, {
     ...rest,
     headers: {
       ...(headers || {}),
