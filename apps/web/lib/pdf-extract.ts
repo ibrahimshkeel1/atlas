@@ -1,16 +1,25 @@
 import "server-only";
 import { createRequire } from "node:module";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { parseBankStatement, type ParseResult, type ParsedTx } from "@/lib/bank-parsers";
-import { attachSourceMeta, buildPageLayouts, type Pdf2JsonData } from "@/lib/pdf-layout";
+import {
+  attachSourceMeta,
+  buildPageLayouts,
+  buildTextFallbackLayouts,
+  type Pdf2JsonData,
+} from "@/lib/pdf-layout";
 
-const require = createRequire(import.meta.url);
+const require = createRequire(
+  join(dirname(fileURLToPath(import.meta.url)), "..", "package.json")
+);
 
 export type EnrichedTx = ParsedTx & {
   page_number: number | null;
   source_meta: Record<string, unknown> | null;
 };
 
-export type PdfExtraction = ParseResult & {
+export type PdfExtraction = Omit<ParseResult, "transactions"> & {
   text_chars: number;
   page_count: number;
   transactions: EnrichedTx[];
@@ -58,7 +67,11 @@ export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
 export async function extractTransactionsFromPdf(buffer: Buffer): Promise<PdfExtraction> {
   const { text, pdfData } = await parsePdfBuffer(buffer);
   const parsed = parseBankStatement(text);
-  const layouts = buildPageLayouts(pdfData);
+  let layouts = buildPageLayouts(pdfData);
+  const layoutLines = layouts.reduce((n, l) => n + l.lines.length, 0);
+  if (!layoutLines) {
+    layouts = buildTextFallbackLayouts(text, pdfData.Pages?.length || 1);
+  }
   const transactions: EnrichedTx[] = parsed.transactions.map((tx) => {
     const { page_number, source_meta } = attachSourceMeta(layouts, tx);
     return { ...tx, page_number, source_meta };
@@ -67,6 +80,6 @@ export async function extractTransactionsFromPdf(buffer: Buffer): Promise<PdfExt
     ...parsed,
     transactions,
     text_chars: text.length,
-    page_count: pdfData.Pages?.length || 0,
+    page_count: pdfData.Pages?.length || layouts.length || 0,
   };
 }

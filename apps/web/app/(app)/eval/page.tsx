@@ -154,10 +154,10 @@ export default function EvalDashboardPage() {
         clientApi<{ run: EvalRun | null; message?: string }>("/eval/latest"),
         clientApi<{ runs: EvalRun[] }>("/eval/runs?limit=10"),
       ]);
-      setCatalog(catalogRes);
-      setBankReport(banks.report);
-      setRun(latest.run ?? null);
-      setHistory(runs.runs || []);
+      setCatalog(catalogRes?.banks ? catalogRes : null);
+      setBankReport(banks?.report ?? null);
+      setRun(latest?.run ?? null);
+      setHistory(Array.isArray(runs?.runs) ? runs.runs : []);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load evaluation data");
     } finally {
@@ -257,7 +257,7 @@ export default function EvalDashboardPage() {
                 ))}
               </div>
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                {catalog.banks.map((b) => (
+                {(catalog.banks ?? []).map((b) => (
                   <div
                     key={b.slug}
                     className="flex items-start justify-between gap-2 rounded-md border border-border/60 px-3 py-2"
@@ -313,7 +313,7 @@ export default function EvalDashboardPage() {
 
         {bankReport?.has_measurements && (
           <div className="grid gap-4 lg:grid-cols-3">
-            {bankReport.banks.map((b) => (
+            {(bankReport.banks ?? []).map((b) => (
               <Card key={b.bank}>
                 <CardHeader className="pb-3">
                   <CardTitle className="font-display text-2xl tracking-tight">
@@ -335,13 +335,13 @@ export default function EvalDashboardPage() {
                       value={`${b.balance_matches}/${b.balance_evaluated}`}
                     />
                   </dl>
-                  {b.statements_detail && b.statements_detail.length > 0 && (
+                  {(b.statements_detail ?? []).length > 0 && (
                     <div className="border-t border-border/60 pt-3">
                       <p className="mb-2 text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
                         Statements
                       </p>
                       <ul className="space-y-2">
-                        {b.statements_detail.map((s) => (
+                        {(b.statements_detail ?? []).map((s) => (
                           <li
                             key={s.statement_id}
                             className="flex flex-wrap items-baseline justify-between gap-2 text-xs"
@@ -482,7 +482,7 @@ export default function EvalDashboardPage() {
               <h2 className="font-display text-xl tracking-tight">Suite fixture detail</h2>
               <Card>
                 <CardContent className="space-y-0 pt-2">
-                  {run.fixtures.map((f) => (
+                  {run.fixtures?.map((f) => (
                     <div
                       key={f.fixture_name}
                       className="grid gap-2 border-b border-border/60 py-4 last:border-0 sm:grid-cols-[140px_1fr]"

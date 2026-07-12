@@ -155,6 +155,18 @@ export function serializeTransaction(
   extras?: { rule_suggestion?: ReturnType<typeof buildRuleSuggestion> | null }
 ) {
   const cat = t.categoryId ? catMap[t.categoryId] : null;
+  let sourceMeta: Record<string, unknown> | null = null;
+  if (t.sourceMetaJson) {
+    if (typeof t.sourceMetaJson === "string") {
+      try {
+        sourceMeta = JSON.parse(t.sourceMetaJson) as Record<string, unknown>;
+      } catch {
+        sourceMeta = null;
+      }
+    } else if (typeof t.sourceMetaJson === "object") {
+      sourceMeta = t.sourceMetaJson as Record<string, unknown>;
+    }
+  }
   return {
     id: t.id,
     document_id: t.documentId,
@@ -170,7 +182,7 @@ export function serializeTransaction(
     needs_review: t.needsReview,
     page_number: t.pageNumber,
     extraction_source: t.extractionSource,
-    source_meta: t.sourceMetaJson,
+    source_meta: sourceMeta,
     suggested_category: null,
     rule_suggestion: extras?.rule_suggestion ?? null,
   };

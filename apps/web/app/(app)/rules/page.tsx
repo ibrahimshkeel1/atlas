@@ -160,25 +160,31 @@ export default function RulesPage() {
           {rules.map((rule) => (
             <div
               key={rule.id}
-              className="flex flex-col gap-3 border-b border-border/60 py-3 last:border-0 sm:flex-row sm:items-center sm:justify-between"
+              className="rounded-lg border border-border/60 p-3 sm:p-4"
             >
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0">
                 <p className="text-sm font-medium">“{rule.pattern}”</p>
                 <p className="text-xs text-muted-foreground">
                   {rule.match_type} · priority {rule.priority}
                 </p>
               </div>
-              <div className="flex w-full shrink-0 flex-wrap items-center gap-2 sm:w-auto">
-                <div className="relative min-w-[180px] max-w-full flex-1 sm:flex-none">
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <div className="min-w-0 flex-1">
+                  <Label className="mb-1 block text-xs text-muted-foreground">Category</Label>
                   <CategorySelect
                     categories={categories}
                     value={rule.category_id}
                     onValueChange={(v) => changeCategory(rule.id, v)}
                     onCategoriesChange={setCategories}
-                    triggerClassName="h-8 w-full min-w-[180px] max-w-[240px]"
+                    triggerClassName="h-9 w-full"
                   />
                 </div>
-                <Button variant="ghost" size="sm" onClick={() => removeRule(rule.id)}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="shrink-0"
+                  onClick={() => removeRule(rule.id)}
+                >
                   Delete
                 </Button>
               </div>

@@ -1,5 +1,3 @@
-import "server-only";
-
 type PdfTextRun = { T?: string; TS?: number[] };
 type PdfTextItem = { x: number; y: number; w: number; R?: PdfTextRun[] };
 type PdfPage = { Width: number; Height: number; Texts?: PdfTextItem[] };
@@ -18,6 +16,13 @@ export type PageLayout = {
   width: number;
   height: number;
   lines: PageLine[];
+};
+
+export type TxForLayout = {
+  transaction_date: string;
+  description: string;
+  debit?: string | null;
+  credit?: string | null;
 };
 
 function decodeText(runs: PdfTextRun[] | undefined): string {
@@ -78,6 +83,41 @@ export function buildPageLayouts(pdfData: Pdf2JsonData): PageLayout[] {
   return layouts;
 }
 
+/** Fallback when pdf2json returns text but no positioned glyphs (some serverless builds). */
+export function buildTextFallbackLayouts(rawText: string, pageCount = 1): PageLayout[] {
+  const chunks = rawText.split(/\f+/).filter((c) => c.trim());
+  const pages = chunks.length > 1 ? chunks : null;
+  const width = 37.188;
+  const height = 52.625;
+  const lineHeight = height / 55;
+
+  const buildPage = (text: string, page: number): PageLayout => {
+    const lines: PageLine[] = [];
+    const rows = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    rows.forEach((row, i) => {
+      lines.push({
+        text: row,
+        x0: 1,
+        top: 2 + i * lineHeight,
+        x1: width - 1,
+        bottom: 2 + (i + 1) * lineHeight,
+      });
+    });
+    return { page, width, height, lines };
+  };
+
+  if (pages) return pages.map((text, i) => buildPage(text, i + 1));
+
+  const allLines = rawText.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const perPage = Math.max(Math.ceil(allLines.length / Math.max(pageCount, 1)), 1);
+  const layouts: PageLayout[] = [];
+  for (let p = 0; p < Math.max(pageCount, 1); p++) {
+    const slice = allLines.slice(p * perPage, (p + 1) * perPage);
+    layouts.push(buildPage(slice.join("\n"), p + 1));
+  }
+  return layouts.filter((l) => l.lines.length > 0);
+}
+
 function normTokens(text: string): string[] {
   return text
     .toLowerCase()
@@ -99,6 +139,21 @@ function dateNeedles(iso: string): string[] {
     `${dd}-${mm}-${yyyy}`,
     iso,
   ];
+}
+
+function amountNeedles(debit?: string | null, credit?: string | null): string[] {
+  const out: string[] = [];
+  for (const raw of [debit, credit]) {
+    if (!raw) continue;
+    const n = Number(String(raw).replace(/,/g, ""));
+    if (!Number.isFinite(n)) continue;
+    const plain = n.toFixed(2);
+    const comma = plain.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    for (const amt of [plain, comma]) {
+      out.push(`Rs. ${amt}`, `Rs.${amt}`, `-Rs. ${amt}`, `+Rs. ${amt}`, amt);
+    }
+  }
+  return [...new Set(out)];
 }
 
 function bboxPayload(layout: PageLayout, line: PageLine, match: string, needle: string) {
@@ -131,26 +186,90 @@ function scoreLine(line: PageLine, description: string): number {
   return score;
 }
 
+function expandedSearchLines(layout: PageLayout): PageLine[] {
+  const base = layout.lines;
+  const merged: PageLine[] = [];
+  for (let i = 0; i < base.length; i++) {
+    merged.push(base[i]!);
+    if (i + 1 < base.length) {
+      const a = base[i]!;
+      const b = base[i + 1]!;
+      if (b.top - a.bottom < 5) {
+        merged.push({
+          text: `${a.text} ${b.text}`.replace(/\s+/g, " ").trim(),
+          x0: Math.min(a.x0, b.x0),
+          top: a.top,
+          x1: Math.max(a.x1, b.x1),
+          bottom: b.bottom,
+        });
+      }
+    }
+    if (i + 2 < base.length) {
+      const a = base[i]!;
+      const b = base[i + 1]!;
+      const c = base[i + 2]!;
+      if (c.top - a.bottom < 8) {
+        merged.push({
+          text: `${a.text} ${b.text} ${c.text}`.replace(/\s+/g, " ").trim(),
+          x0: Math.min(a.x0, b.x0, c.x0),
+          top: a.top,
+          x1: Math.max(a.x1, b.x1, c.x1),
+          bottom: c.bottom,
+        });
+      }
+    }
+  }
+  return merged;
+}
+
+function findLineHit(
+  layout: PageLayout,
+  needles: string[]
+): { line: PageLine; needle: string } | null {
+  const lines = expandedSearchLines(layout);
+  for (const needle of needles) {
+    if (!needle || needle.length < 3) continue;
+    const low = needle.toLowerCase();
+    const hit = lines.find((line) => line.text.toLowerCase().includes(low));
+    if (hit) return { line: hit, needle };
+  }
+  return null;
+}
+
 export function attachSourceMeta(
   layouts: PageLayout[],
-  tx: { transaction_date: string; description: string }
+  tx: TxForLayout
 ): { page_number: number | null; source_meta: Record<string, unknown> | null } {
   const desc = tx.description.trim();
-  const needles = [desc, desc.slice(0, 48), desc.slice(0, 32), desc.slice(0, 24)].filter(
-    (n, i, arr) => n.length >= 6 && arr.indexOf(n) === i
-  );
+  const descNeedles = [
+    desc,
+    desc.slice(0, 64),
+    desc.slice(0, 48),
+    desc.slice(0, 32),
+    desc.slice(0, 24),
+    ...normTokens(desc).slice(0, 4),
+  ].filter((n, i, arr) => n.length >= 4 && arr.indexOf(n) === i);
+
+  const amountHits = amountNeedles(tx.debit, tx.credit);
   const dates = dateNeedles(tx.transaction_date);
 
   for (const layout of layouts) {
-    for (const needle of needles) {
-      const low = needle.toLowerCase();
-      const hit = layout.lines.find((line) => line.text.toLowerCase().includes(low));
-      if (hit) {
-        return {
-          page_number: layout.page,
-          source_meta: bboxPayload(layout, hit, "description", needle),
-        };
-      }
+    const hit = findLineHit(layout, descNeedles);
+    if (hit) {
+      return {
+        page_number: layout.page,
+        source_meta: bboxPayload(layout, hit.line, "description", hit.needle),
+      };
+    }
+  }
+
+  for (const layout of layouts) {
+    const hit = findLineHit(layout, amountHits);
+    if (hit) {
+      return {
+        page_number: layout.page,
+        source_meta: bboxPayload(layout, hit.line, "amount", hit.needle),
+      };
     }
   }
 
@@ -158,7 +277,7 @@ export function attachSourceMeta(
   for (const layout of layouts) {
     for (const dn of dates) {
       const dl = dn.toLowerCase();
-      for (const line of layout.lines) {
+      for (const line of expandedSearchLines(layout)) {
         if (!line.text.toLowerCase().includes(dl)) continue;
         const s = scoreLine(line, desc);
         const ranked = s > 0 ? s : 1;

@@ -16,6 +16,7 @@ import {
   verifyPassword,
 } from "@/lib/auth-server";
 import { downloadPdf, uploadPdf } from "@/lib/storage";
+import type { PdfExtraction } from "@/lib/pdf-extract";
 import type { SessionUser } from "@/lib/session";
 
 const SYSTEM_CATEGORIES = [
@@ -95,7 +96,7 @@ async function persistExtractedDocument(
   bytes: Buffer
 ) {
   const { extractTransactionsFromPdf } = await import("@/lib/pdf-extract");
-  const extracted = await extractTransactionsFromPdf(bytes);
+  const extracted: PdfExtraction = await extractTransactionsFromPdf(bytes);
   if (!extracted.transactions.length) {
     await db
       .update(documents)
@@ -150,6 +151,8 @@ async function persistExtractedDocument(
         method: extracted.method,
         text_chars: extracted.text_chars,
         transaction_count: extracted.transactions.length,
+        highlights_attached: extracted.transactions.filter((t) => t.source_meta?.bbox_norm).length,
+        layout_lines: extracted.transactions.length,
       },
       updatedAt: new Date(),
     })

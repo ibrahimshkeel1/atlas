@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
 import { Check, ChevronsUpDown, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -67,6 +68,10 @@ export const CategorySelect = forwardRef<CategorySelectHandle, Props>(
     const [highlight, setHighlight] = useState(0);
     const searchRef = useRef<HTMLInputElement>(null);
     const rootRef = useRef<HTMLDivElement>(null);
+    const triggerRef = useRef<HTMLButtonElement>(null);
+    const [menuPos, setMenuPos] = useState<{ top: number; left: number; width: number } | null>(
+      null
+    );
 
     useImperativeHandle(ref, () => ({
       open: () => {
@@ -85,10 +90,13 @@ export const CategorySelect = forwardRef<CategorySelectHandle, Props>(
     useEffect(() => {
       if (!open) return;
       function onDoc(e: MouseEvent) {
-        if (!rootRef.current?.contains(e.target as Node)) {
-          setOpen(false);
-          setQuery("");
-        }
+        const target = e.target as Node;
+        if (rootRef.current?.contains(target)) return;
+        if (triggerRef.current?.contains(target)) return;
+        const portal = document.getElementById("category-select-portal");
+        if (portal?.contains(target)) return;
+        setOpen(false);
+        setQuery("");
       }
       document.addEventListener("mousedown", onDoc);
       return () => document.removeEventListener("mousedown", onDoc);
@@ -148,6 +156,30 @@ export const CategorySelect = forwardRef<CategorySelectHandle, Props>(
       setHighlight(0);
     }, [query, open]);
 
+    useEffect(() => {
+      if (!open) {
+        setMenuPos(null);
+        return;
+      }
+      function place() {
+        const el = triggerRef.current;
+        if (!el) return;
+        const rect = el.getBoundingClientRect();
+        setMenuPos({
+          top: rect.bottom + 4,
+          left: rect.left,
+          width: Math.max(rect.width, 240),
+        });
+      }
+      place();
+      window.addEventListener("resize", place);
+      window.addEventListener("scroll", place, true);
+      return () => {
+        window.removeEventListener("resize", place);
+        window.removeEventListener("scroll", place, true);
+      };
+    }, [open]);
+
     async function createCategory(e: React.FormEvent) {
       e.preventDefault();
       if (!name.trim()) return;
@@ -206,6 +238,7 @@ export const CategorySelect = forwardRef<CategorySelectHandle, Props>(
     return (
       <div ref={rootRef} className={cn("relative space-y-2", open && "z-50")}>
         <button
+          ref={triggerRef}
           type="button"
           className={cn(
             "flex h-10 w-full items-center justify-between rounded-md border border-input bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring",
@@ -237,62 +270,74 @@ export const CategorySelect = forwardRef<CategorySelectHandle, Props>(
             </button>
           )}
 
-        {open && (
-          <div className="absolute z-50 mt-1 w-full min-w-[220px] overflow-hidden rounded-md border bg-white shadow-md">
-            <div className="border-b p-2">
-              <Input
-                ref={searchRef}
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={onSearchKey}
-                placeholder="Search categories…"
-                className="h-8"
-              />
-            </div>
-            <ul className="max-h-56 overflow-y-auto py-1" role="listbox">
-              {options.length === 0 && (
-                <li className="px-3 py-2 text-sm text-muted-foreground">No matches</li>
-              )}
-              {options.map((opt, i) => (
-                <li key={opt.id}>
-                  <button
-                    type="button"
-                    role="option"
-                    aria-selected={opt.id === value || i === highlight}
-                    className={cn(
-                      "flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm",
-                      i === highlight ? "bg-accent" : "hover:bg-muted/60"
-                    )}
-                    onMouseEnter={() => setHighlight(i)}
-                    onClick={() => pick(opt.id)}
-                  >
-                    <Check
+        {open &&
+          menuPos &&
+          typeof document !== "undefined" &&
+          createPortal(
+            <div
+              id="category-select-portal"
+              className="fixed z-[200] overflow-hidden rounded-md border bg-white shadow-lg"
+              style={{
+                top: menuPos.top,
+                left: menuPos.left,
+                width: menuPos.width,
+              }}
+            >
+              <div className="border-b p-2">
+                <Input
+                  ref={searchRef}
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onKeyDown={onSearchKey}
+                  placeholder="Search categories…"
+                  className="h-8"
+                />
+              </div>
+              <ul className="max-h-56 overflow-y-auto py-1" role="listbox">
+                {options.length === 0 && (
+                  <li className="px-3 py-2 text-sm text-muted-foreground">No matches</li>
+                )}
+                {options.map((opt, i) => (
+                  <li key={opt.id}>
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={opt.id === value || i === highlight}
                       className={cn(
-                        "h-3.5 w-3.5 shrink-0",
-                        opt.id === value ? "opacity-100" : "opacity-0"
+                        "flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm",
+                        i === highlight ? "bg-accent" : "hover:bg-muted/60"
                       )}
-                    />
-                    <span className="min-w-0 flex-1 truncate">
-                      {opt.id === "__create__" ? (
-                        <span className="inline-flex items-center gap-1">
-                          <Plus className="h-3.5 w-3.5" />
-                          {opt.label}
-                        </span>
-                      ) : (
-                        opt.label
-                      )}
-                    </span>
-                    {opt.hint && (
-                      <span className="shrink-0 text-[10px] text-muted-foreground">
-                        {opt.hint}
+                      onMouseEnter={() => setHighlight(i)}
+                      onClick={() => pick(opt.id)}
+                    >
+                      <Check
+                        className={cn(
+                          "h-3.5 w-3.5 shrink-0",
+                          opt.id === value ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                      <span className="min-w-0 flex-1 truncate">
+                        {opt.id === "__create__" ? (
+                          <span className="inline-flex items-center gap-1">
+                            <Plus className="h-3.5 w-3.5" />
+                            {opt.label}
+                          </span>
+                        ) : (
+                          opt.label
+                        )}
                       </span>
-                    )}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+                      {opt.hint && (
+                        <span className="shrink-0 text-[10px] text-muted-foreground">
+                          {opt.hint}
+                        </span>
+                      )}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>,
+            document.body
+          )}
 
         {creating && (
           <form

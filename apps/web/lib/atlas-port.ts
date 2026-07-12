@@ -1030,7 +1030,7 @@ export async function listAuditLogs(user: SessionUser, params: URLSearchParams) 
 // ---- Clients ----
 
 export async function listClientsApi(user: SessionUser) {
-  const orgClients = await db
+  let orgClients = await db
     .select({
       id: clients.id,
       name: clients.name,
@@ -1040,8 +1040,30 @@ export async function listClientsApi(user: SessionUser) {
     .from(clients)
     .where(eq(clients.organizationId, user.organizationId))
     .orderBy(desc(clients.isDefault), asc(clients.name));
+
+  if (!orgClients.length) {
+    const [row] = await db
+      .insert(clients)
+      .values({
+        organizationId: user.organizationId,
+        name: "Default client",
+        slug: "default",
+        isDefault: true,
+        status: "active",
+      })
+      .returning();
+    orgClients = [
+      {
+        id: row.id,
+        name: row.name,
+        slug: row.slug,
+        is_default: row.isDefault,
+      },
+    ];
+  }
+
   const def = orgClients.find((c) => c.is_default);
-  return { clients: orgClients, default_client_id: def?.id || null };
+  return { clients: orgClients, default_client_id: def?.id || orgClients[0]?.id || null };
 }
 
 export async function createClientApi(user: SessionUser, body: { name: string }) {
