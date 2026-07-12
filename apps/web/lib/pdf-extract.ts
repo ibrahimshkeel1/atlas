@@ -1,7 +1,6 @@
 import "server-only";
 import { createRequire } from "node:module";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
 import { parseBankStatement, type ParseResult, type ParsedTx } from "@/lib/bank-parsers";
 import {
   attachSourceMeta,
@@ -9,10 +8,6 @@ import {
   buildTextFallbackLayouts,
   type Pdf2JsonData,
 } from "@/lib/pdf-layout";
-
-const require = createRequire(
-  join(dirname(fileURLToPath(import.meta.url)), "..", "package.json")
-);
 
 export type EnrichedTx = ParsedTx & {
   page_number: number | null;
@@ -32,13 +27,51 @@ type PdfParserInstance = {
   parseBuffer(buffer: Buffer): void;
 };
 
-async function parsePdfBuffer(buffer: Buffer): Promise<{ text: string; pdfData: Pdf2JsonData }> {
-  const PDFParser = require("pdf2json") as new (
-    context: null,
-    needRawText: boolean
-  ) => PdfParserInstance;
+type PdfParserCtor = new (context: null, needRawText: boolean) => PdfParserInstance;
 
-  return new Promise((resolve, reject) => {
+function resolvePdfParserCtor(mod: unknown): PdfParserCtor {
+  if (typeof mod === "function") return mod as PdfParserCtor;
+  if (mod && typeof mod === "object") {
+    const rec = mod as Record<string, unknown>;
+    if (typeof rec.default === "function") return rec.default as PdfParserCtor;
+    if (typeof rec.PDFParser === "function") return rec.PDFParser as PdfParserCtor;
+  }
+  throw new Error("pdf2json did not export a parser constructor");
+}
+
+async function loadPdfParser(): Promise<PdfParserCtor> {
+  // 1) Dynamic import — works when pdf2json is serverExternalPackages
+  try {
+    const mod = await import("pdf2json");
+    return resolvePdfParserCtor(mod.default ?? mod);
+  } catch {
+    /* try require */
+  }
+
+  // 2) createRequire from app root (Vercel cwd = apps/web)
+  try {
+    const req = createRequire(resolve(process.cwd(), "package.json"));
+    return resolvePdfParserCtor(req("pdf2json"));
+  } catch {
+    /* try import.meta */
+  }
+
+  // 3) createRequire relative to this module
+  try {
+    const { dirname, join } = await import("node:path");
+    const { fileURLToPath } = await import("node:url");
+    const req = createRequire(join(dirname(fileURLToPath(import.meta.url)), "..", "package.json"));
+    return resolvePdfParserCtor(req("pdf2json"));
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "unknown";
+    throw new Error(`Could not load pdf2json: ${msg}`);
+  }
+}
+
+async function parsePdfBuffer(buffer: Buffer): Promise<{ text: string; pdfData: Pdf2JsonData }> {
+  const PDFParser = await loadPdfParser();
+
+  return new Promise((resolvePromise, reject) => {
     const parser = new PDFParser(null, true);
     parser.on("pdfParser_dataError", (err) => {
       const msg =
@@ -53,7 +86,7 @@ async function parsePdfBuffer(buffer: Buffer): Promise<{ text: string; pdfData: 
         reject(new Error("Could not extract text from this PDF"));
         return;
       }
-      resolve({ text, pdfData });
+      resolvePromise({ text, pdfData });
     });
     parser.parseBuffer(buffer);
   });
@@ -78,9 +111,10 @@ export async function extractTransactionsFromPdf(buffer: Buffer): Promise<PdfExt
 
   let layouts = buildPageLayouts(pdfData);
   let transactions = enrich(layouts);
+  const layoutLines = layouts.reduce((n, l) => n + l.lines.length, 0);
   let withBbox = transactions.filter((t) => t.source_meta?.bbox_norm).length;
 
-  if (!layouts.reduce((n, l) => n + l.lines.length, 0) || withBbox === 0) {
+  if (!layoutLines || withBbox === 0) {
     layouts = buildTextFallbackLayouts(text, pageCount);
     transactions = enrich(layouts);
     withBbox = transactions.filter((t) => t.source_meta?.bbox_norm).length;
