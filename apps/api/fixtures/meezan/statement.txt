@@ -1,0 +1,12 @@
+Meezan Bank Islamic Current Account Statement
+Account: ****9912  Period: 01 Jun 2026 to 30 Jun 2026
+01 Jun 2026 IBFT Incoming Fund Transfer +Rs. 13,290.00 Rs. 45,000.00
+02 Jun 2026 Shell Pakistan Fuel -Rs. 4,250.50 Rs. 40,749.50
+05 Jun 2026 Office Rent June -Rs. 85,000.00 Rs. -44,250.50
+05 Jun 2026 Customer Payment POS Deposit +Rs. 92,500.00 Rs. 48,249.50
+08 Jun 2026 Salary Transfer Staff Payroll -Rs. 120,000.00 Rs. -71,750.50
+10 Jun 2026 Marketing Facebook Ads -Rs. 6,217.06 Rs. -77,967.56
+12 Jun 2026 Utility Bill K-Electric -Rs. 8,450.00 Rs. -86,417.56
+15 Jun 2026 Purchase Inventory Supplier -Rs. 18,632.37 Rs. -105,049.93
+18 Jun 2026 Sales Deposit Remittance +Rs. 68,000.00 Rs. -37,049.93
+22 Jun 2026 Tax Payment FBR Withholding -Rs. 3,500.00 Rs. -40,549.93

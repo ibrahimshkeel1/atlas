@@ -1,0 +1,15 @@
+{
+  "bank_name": "Meezan",
+  "transactions": [
+    {"transaction_date": "2026-06-01", "description": "IBFT Incoming Fund Transfer", "debit": null, "credit": "13290.00", "balance": "45000.00"},
+    {"transaction_date": "2026-06-02", "description": "Shell Pakistan Fuel", "debit": "4250.50", "credit": null, "balance": "40749.50"},
+    {"transaction_date": "2026-06-05", "description": "Office Rent June", "debit": "85000.00", "credit": null, "balance": null},
+    {"transaction_date": "2026-06-05", "description": "Customer Payment POS Deposit", "debit": null, "credit": "92500.00", "balance": "48249.50"},
+    {"transaction_date": "2026-06-08", "description": "Salary Transfer Staff Payroll", "debit": "120000.00", "credit": null, "balance": null},
+    {"transaction_date": "2026-06-10", "description": "Marketing Facebook Ads", "debit": "6217.06", "credit": null, "balance": null},
+    {"transaction_date": "2026-06-12", "description": "Utility Bill K-Electric", "debit": "8450.00", "credit": null, "balance": null},
+    {"transaction_date": "2026-06-15", "description": "Purchase Inventory Supplier", "debit": "18632.37", "credit": null, "balance": null},
+    {"transaction_date": "2026-06-18", "description": "Sales Deposit Remittance", "debit": null, "credit": "68000.00", "balance": null},
+    {"transaction_date": "2026-06-22", "description": "Tax Payment FBR Withholding", "debit": "3500.00", "credit": null, "balance": null}
+  ]
+}

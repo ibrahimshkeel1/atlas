@@ -1,0 +1,28 @@
+.env
+.env.local
+.env.staging
+.env.production.local
+.env*.local
+!**/.env.example
+!**/.env.*.example
+**/.venv/
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache/
+**/node_modules/
+**/.next/
+**/dist/
+**/build/
+*.egg-info/
+.DS_Store
+apps/web/.env*.local
+data/
+
+# Private bank-eval fixtures (real/redacted customer statements — never commit)
+sample-data/bank-eval/private/**
+!sample-data/bank-eval/private/README.md
+M|*.pdf
+/M|*.pdf
+
+# Local user statement PDFs
+/M|*.pdf

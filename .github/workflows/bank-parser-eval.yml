@@ -1,0 +1,61 @@
+name: Bank parser evaluation
+
+on:
+  push:
+    paths:
+      - "apps/api/app/services/parsers/**"
+      - "apps/api/app/services/bank_parser_eval.py"
+      - "apps/api/app/services/pdf_extract.py"
+      - "apps/api/app/services/accuracy.py"
+      - "apps/api/scripts/evaluate_bank_parser.py"
+      - "sample-data/bank-eval/public/**"
+      - "sample-data/fixtures/**"
+      - ".github/workflows/bank-parser-eval.yml"
+  pull_request:
+    paths:
+      - "apps/api/app/services/parsers/**"
+      - "apps/api/app/services/bank_parser_eval.py"
+      - "apps/api/app/services/pdf_extract.py"
+      - "apps/api/scripts/evaluate_bank_parser.py"
+      - "sample-data/bank-eval/public/**"
+      - "sample-data/fixtures/**"
+      - ".github/workflows/bank-parser-eval.yml"
+  workflow_dispatch:
+
+jobs:
+  evaluate:
+    name: Public Meezan/HBL/UBL fixtures
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: apps/api/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run bank parser evaluation (public fixtures only)
+        env:
+          # Never load private customer fixtures in CI
+          ATLAS_BANK_EVAL_PRIVATE_DIR: ""
+        run: python scripts/evaluate_bank_parser.py --ci
+
+      - name: Upload JSON report
+        if: always()
+        run: python scripts/evaluate_bank_parser.py --json > bank-parser-eval.json
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bank-parser-eval-report
+          path: apps/api/bank-parser-eval.json

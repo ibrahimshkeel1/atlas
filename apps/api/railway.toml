@@ -1,0 +1,18 @@
+# Atlas API — Railway service notes
+#
+# In Railway UI:
+#   Root Directory = apps/api
+#   Use Dockerfile (CMD runs alembic + uvicorn)
+#
+# Worker service (same image):
+#   Custom start: sh scripts/start_worker.sh
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5

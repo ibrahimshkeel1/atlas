@@ -1,0 +1,12 @@
+UBL United Bank Limited Business Account Statement
+Account: ****3340  Period: 01/03/2025 to 31/03/2025
+01/03/2025 Customer Payment ACME Corp CR 15,000.00 95,000.00
+03/03/2025 Shell Pakistan Fuel Station DR 3,250.00 91,750.00
+05/03/2025 Office Rent March DR 55,000.00 36,750.00
+07/03/2025 Salary Transfer Staff DR 80,000.00 -43,250.00
+10/03/2025 Marketing Google Ads DR 4,800.00 -48,050.00
+12/03/2025 Utility Bill SSGC DR 2,150.75 -50,200.75
+15/03/2025 Sales Deposit POS CR 42,500.00 -7,700.75
+18/03/2025 Purchase Inventory Supplier DR 12,400.00 -20,100.75
+22/03/2025 Tax Payment FBR DR 1,800.00 -21,900.75
+28/03/2025 Loan Disbursement CR 100,000.00 78,099.25

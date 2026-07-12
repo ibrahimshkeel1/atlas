@@ -1,0 +1,21 @@
+{
+  "bank_name": "UBL",
+  "statement_id": "001-synthetic",
+  "source": "synthetic",
+  "privacy": "public",
+  "currency": "PKR",
+  "closing_balance": "78099.25",
+  "period": { "start": "2025-03-01", "end": "2025-03-28" },
+  "transactions": [
+    {"transaction_date": "2025-03-01", "description": "Customer Payment ACME Corp", "debit": null, "credit": "15000.00", "balance": "95000.00"},
+    {"transaction_date": "2025-03-03", "description": "Shell Pakistan Fuel Station", "debit": "3250.00", "credit": null, "balance": "91750.00"},
+    {"transaction_date": "2025-03-05", "description": "Office Rent March", "debit": "55000.00", "credit": null, "balance": "36750.00"},
+    {"transaction_date": "2025-03-07", "description": "Salary Transfer Staff", "debit": "80000.00", "credit": null, "balance": null},
+    {"transaction_date": "2025-03-10", "description": "Marketing Google Ads", "debit": "4800.00", "credit": null, "balance": null},
+    {"transaction_date": "2025-03-12", "description": "Utility Bill SSGC", "debit": "2150.75", "credit": null, "balance": null},
+    {"transaction_date": "2025-03-15", "description": "Sales Deposit POS", "debit": null, "credit": "42500.00", "balance": null},
+    {"transaction_date": "2025-03-18", "description": "Purchase Inventory Supplier", "debit": "12400.00", "credit": null, "balance": null},
+    {"transaction_date": "2025-03-22", "description": "Tax Payment FBR", "debit": "1800.00", "credit": null, "balance": null},
+    {"transaction_date": "2025-03-28", "description": "Loan Disbursement", "debit": null, "credit": "100000.00", "balance": "78099.25"}
+  ]
+}

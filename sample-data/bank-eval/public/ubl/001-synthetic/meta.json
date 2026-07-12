@@ -1,0 +1,7 @@
+{
+  "bank": "ubl",
+  "statement_id": "001-synthetic",
+  "privacy": "public",
+  "source": "synthetic",
+  "notes": "CI baseline synthetic UBL statement"
+}

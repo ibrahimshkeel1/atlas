@@ -1,0 +1,12 @@
+HBL Business Account Statement
+Account: ****4821  Period: 2024-01-01 to 2024-01-31
+2024-01-02 Customer Payment ACME Corp 0.00 2500.00 12500.00
+2024-01-05 Shell Pakistan Fuel Station 85.40 0.00 12414.60
+2024-01-08 Office Rent January 1200.00 0.00 11214.60
+2024-01-10 Salary Transfer Staff 3500.00 0.00 7714.60
+2024-01-12 Marketing Facebook Ads 220.00 0.00 7494.60
+2024-01-15 Utility Bill KESC 145.75 0.00 7348.85
+2024-01-18 Sales Deposit POS 0.00 980.00 8328.85
+2024-01-22 Purchase Inventory Supplier 640.00 0.00 7688.85
+2024-01-25 Tax Payment FBR 300.00 0.00 7388.85
+2024-01-28 Loan Disbursement 0.00 5000.00 12388.85
