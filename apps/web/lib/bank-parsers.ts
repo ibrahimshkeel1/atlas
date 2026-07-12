@@ -62,7 +62,7 @@ function parseMeezan(text: string): ParseResult {
     const sign = m[3];
     const debit = sign === "-" ? amount : null;
     const credit = sign === "+" ? amount : null;
-    let desc = m[2].replace(/[+\-]?\s*(?:Rs\.?|PKR)?\s*\d[\d,]*\.?\d{0,2}\s*$/i, "");
+    const desc = m[2].replace(/[+\-]?\s*(?:Rs\.?|PKR)?\s*\d[\d,]*\.?\d{0,2}\s*$/i, "");
     const tx = makeTx(iso, desc, debit, credit, money(m[5]), 0.78, seen);
     if (tx) txs.push(tx);
   }
