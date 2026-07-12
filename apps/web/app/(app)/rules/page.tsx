@@ -89,7 +89,7 @@ export default function RulesPage() {
         </p>
       </div>
 
-      <Card className="max-w-2xl">
+      <Card className="max-w-2xl overflow-visible">
         <CardHeader>
           <CardTitle>Add rule</CardTitle>
           <CardDescription>

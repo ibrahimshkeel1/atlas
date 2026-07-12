@@ -67,19 +67,29 @@ export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
 export async function extractTransactionsFromPdf(buffer: Buffer): Promise<PdfExtraction> {
   const { text, pdfData } = await parsePdfBuffer(buffer);
   const parsed = parseBankStatement(text);
-  let layouts = buildPageLayouts(pdfData);
-  const layoutLines = layouts.reduce((n, l) => n + l.lines.length, 0);
-  if (!layoutLines) {
-    layouts = buildTextFallbackLayouts(text, pdfData.Pages?.length || 1);
+  const pageCount = pdfData.Pages?.length || 1;
+
+  function enrich(layouts: ReturnType<typeof buildPageLayouts>): EnrichedTx[] {
+    return parsed.transactions.map((tx) => {
+      const { page_number, source_meta } = attachSourceMeta(layouts, tx);
+      return { ...tx, page_number, source_meta };
+    });
   }
-  const transactions: EnrichedTx[] = parsed.transactions.map((tx) => {
-    const { page_number, source_meta } = attachSourceMeta(layouts, tx);
-    return { ...tx, page_number, source_meta };
-  });
+
+  let layouts = buildPageLayouts(pdfData);
+  let transactions = enrich(layouts);
+  let withBbox = transactions.filter((t) => t.source_meta?.bbox_norm).length;
+
+  if (!layouts.reduce((n, l) => n + l.lines.length, 0) || withBbox === 0) {
+    layouts = buildTextFallbackLayouts(text, pageCount);
+    transactions = enrich(layouts);
+    withBbox = transactions.filter((t) => t.source_meta?.bbox_norm).length;
+  }
+
   return {
     ...parsed,
     transactions,
     text_chars: text.length,
-    page_count: pdfData.Pages?.length || layouts.length || 0,
+    page_count: pageCount || layouts.length || 0,
   };
 }

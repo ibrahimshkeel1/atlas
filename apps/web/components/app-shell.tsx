@@ -99,6 +99,9 @@ export function AppShell({
           <div className="border-t border-border/80 p-4">
             <p className="truncate text-sm font-medium">{userName}</p>
             <p className="truncate text-xs text-muted-foreground">{orgName}</p>
+            <p className="mt-1 text-[10px] text-muted-foreground/70">
+              build {process.env.NEXT_PUBLIC_BUILD_SHA?.slice(0, 7) || "dev"}
+            </p>
             <Button variant="ghost" size="sm" className="mt-3 w-full justify-start" onClick={logout}>
               <LogOut className="h-4 w-4" />
               Sign out

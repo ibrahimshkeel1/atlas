@@ -5,6 +5,9 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/api/proxy/[...path]": ["./node_modules/pdf2json/dist/**/*"],
   },
+  env: {
+    NEXT_PUBLIC_BUILD_SHA: process.env.VERCEL_GIT_COMMIT_SHA || "local",
+  },
 };
 
 export default nextConfig;

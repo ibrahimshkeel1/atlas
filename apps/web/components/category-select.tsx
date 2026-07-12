@@ -276,7 +276,7 @@ export const CategorySelect = forwardRef<CategorySelectHandle, Props>(
           createPortal(
             <div
               id="category-select-portal"
-              className="fixed z-[200] overflow-hidden rounded-md border bg-white shadow-lg"
+              className="fixed z-[9999] overflow-hidden rounded-md border bg-white shadow-lg"
               style={{
                 top: menuPos.top,
                 left: menuPos.left,

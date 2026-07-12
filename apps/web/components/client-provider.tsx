@@ -39,15 +39,17 @@ export function ClientProvider({ children }: { children: React.ReactNode }) {
       const data = await clientApi<{ clients: AtlasClient[]; default_client_id: string | null }>(
         "/clients"
       );
-      setClients(data.clients);
+      setClients(Array.isArray(data.clients) ? data.clients : []);
       const stored = getActiveClientId();
       const validStored = stored && data.clients.some((c) => c.id === stored) ? stored : null;
       const next = validStored || data.default_client_id || data.clients[0]?.id || null;
       setActiveId(next);
       if (next) setActiveClientId(next);
     } catch {
-      setClients([]);
-      setActiveId(null);
+      setClients([
+        { id: "fallback", name: "Default client", slug: "default", is_default: true },
+      ]);
+      setActiveId("fallback");
     } finally {
       setLoading(false);
     }

@@ -147,17 +147,45 @@ export default function EvalDashboardPage() {
 
   const load = useCallback(async () => {
     setError("");
+    setLoading(true);
     try {
-      const [catalogRes, banks, latest, runs] = await Promise.all([
-        clientApi<BankCatalog>("/banks"),
-        clientApi<{ report: BankParserReport }>("/eval/bank-parsers"),
-        clientApi<{ run: EvalRun | null; message?: string }>("/eval/latest"),
-        clientApi<{ runs: EvalRun[] }>("/eval/runs?limit=10"),
-      ]);
-      setCatalog(catalogRes?.banks ? catalogRes : null);
-      setBankReport(banks?.report ?? null);
-      setRun(latest?.run ?? null);
-      setHistory(Array.isArray(runs?.runs) ? runs.runs : []);
+      let catalogRes: BankCatalog | null = null;
+      let bankReportRes: BankParserReport | null = null;
+      let latestRun: EvalRun | null = null;
+      let runHistory: EvalRun[] = [];
+
+      try {
+        const catalog = await clientApi<BankCatalog>("/banks");
+        if (catalog && Array.isArray(catalog.banks)) catalogRes = catalog;
+      } catch (e) {
+        console.warn("banks catalog failed", e);
+      }
+
+      try {
+        const banks = await clientApi<{ report?: BankParserReport }>("/eval/bank-parsers");
+        if (banks?.report) bankReportRes = banks.report;
+      } catch (e) {
+        console.warn("bank parsers failed", e);
+      }
+
+      try {
+        const latest = await clientApi<{ run?: EvalRun | null }>("/eval/latest");
+        latestRun = latest?.run ?? null;
+      } catch (e) {
+        console.warn("eval latest failed", e);
+      }
+
+      try {
+        const runs = await clientApi<{ runs?: EvalRun[] }>("/eval/runs?limit=10");
+        runHistory = Array.isArray(runs?.runs) ? runs.runs : [];
+      } catch (e) {
+        console.warn("eval runs failed", e);
+      }
+
+      setCatalog(catalogRes);
+      setBankReport(bankReportRes);
+      setRun(latestRun);
+      setHistory(runHistory);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load evaluation data");
     } finally {
