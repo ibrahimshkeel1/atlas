@@ -1,5 +1,4 @@
 import { createSignedUrl, uploadReport } from "@/lib/storage";
-import { buildExcelReport, buildPdfReport } from "@/lib/reports-export";
 import {
   assertCategoryUsable,
   assertNotLockedForTx,
@@ -732,8 +731,8 @@ export async function exportReport(
   };
   const bytes =
     body.format === "pdf"
-      ? await buildPdfReport(summary, meta)
-      : await buildExcelReport(summary, meta);
+      ? await (await import("@/lib/reports-export")).buildPdfReport(summary, meta)
+      : await (await import("@/lib/reports-export")).buildExcelReport(summary, meta);
   const ext = body.format === "pdf" ? "pdf" : "xlsx";
   const key = await uploadReport(user.organizationId, `working-papers-${body.period_start}_${body.period_end}.${ext}`, bytes, ext);
   const download_url = await createSignedUrl(key, 3600);

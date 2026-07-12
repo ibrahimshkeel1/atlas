@@ -1,16 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser, jsonError } from "@/lib/session";
 import * as api from "@/lib/atlas-api";
-import * as port from "@/lib/atlas-port";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 type Ctx = { params: Promise<{ path: string[] }> };
 
+function normalizePath(segments: string[]) {
+  return segments.map((s) => decodeURIComponent(s)).join("/").replace(/\/+$/, "");
+}
+
 async function handle(req: NextRequest, pathSegments: string[]) {
-  const path = pathSegments.join("/");
+  const path = normalizePath(pathSegments);
   const method = req.method.toUpperCase();
+  const port = await import("@/lib/atlas-port");
 
   try {
     if (path === "auth/me" && method === "GET") {

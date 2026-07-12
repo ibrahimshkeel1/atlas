@@ -5,13 +5,10 @@ import { Loader2, ZoomIn, ZoomOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { loadBrowserPdfJs, type BrowserPdfDocument } from "@/lib/pdfjs-browser";
+import type { BBoxNorm } from "@/lib/pdf-bbox";
 
-export type BBoxNorm = {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-};
+export type { BBoxNorm } from "@/lib/pdf-bbox";
+export { bboxFromSourceMeta } from "@/lib/pdf-bbox";
 
 type Props = {
   url: string | null;
@@ -176,28 +173,4 @@ export function PdfHighlightViewer({
       </div>
     </div>
   );
-}
-
-export function bboxFromSourceMeta(
-  meta: Record<string, unknown> | null | undefined
-): BBoxNorm | null {
-  if (!meta) return null;
-  const norm = meta.bbox_norm;
-  if (
-    norm &&
-    typeof norm === "object" &&
-    "x" in norm &&
-    "y" in norm &&
-    "w" in norm &&
-    "h" in norm
-  ) {
-    const n = norm as Record<string, unknown>;
-    return {
-      x: Number(n.x),
-      y: Number(n.y),
-      w: Number(n.w),
-      h: Number(n.h),
-    };
-  }
-  return null;
 }

@@ -18,7 +18,7 @@ import {
 } from "@/components/category-select";
 import { RememberRulePrompt } from "@/components/remember-rule-prompt";
 import { ExportWorkingPapersButtons } from "@/components/export-working-papers";
-import { bboxFromSourceMeta } from "@/components/pdf-highlight-viewer";
+import { bboxFromSourceMeta } from "@/lib/pdf-bbox";
 import {
   clientApi,
   type Category,
