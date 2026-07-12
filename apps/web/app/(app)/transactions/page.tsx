@@ -25,6 +25,7 @@ import {
   type ReviewStatus,
   type RuleSuggestion,
   type Transaction,
+  clientListPath,
 } from "@/lib/api";
 import { cn, formatMoney } from "@/lib/utils";
 import { useClientContext } from "@/components/client-provider";
@@ -43,6 +44,7 @@ export default function TransactionsPage() {
   const [rulePrompt, setRulePrompt] = useState<RuleSuggestion | null>(null);
   const [rulePromptDescription, setRulePromptDescription] = useState("");
   const [reviewStatus, setReviewStatus] = useState<ReviewStatus | null>(null);
+  const [filterByClient, setFilterByClient] = useState(false);
   const [error, setError] = useState("");
   const [approving, setApproving] = useState(false);
   const categoryRefs = useRef<Record<string, CategorySelectHandle | null>>({});
@@ -60,8 +62,12 @@ export default function TransactionsPage() {
       if (q) params.set("q", q);
       if (categoryId !== "all") params.set("category_id", categoryId);
       if (needsReview !== "all") params.set("needs_review", needsReview);
+      const txPath =
+        filterByClient && activeClientId
+          ? clientListPath(`/transactions?${params}`, activeClientId)
+          : `/transactions?${params}`;
       const [txs, cats, status] = await Promise.all([
-        clientApi<Transaction[]>(`/transactions?${params}`),
+        clientApi<Transaction[]>(txPath),
         clientApi<Category[]>("/categories"),
         clientApi<ReviewStatus>("/review/status"),
       ]);
@@ -75,7 +81,7 @@ export default function TransactionsPage() {
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load");
     }
-  }, [q, categoryId, needsReview, sort]);
+  }, [q, categoryId, needsReview, sort, filterByClient, activeClientId]);
 
   useEffect(() => {
     load();
@@ -303,6 +309,14 @@ export default function TransactionsPage() {
               style={{ width: `${progressPct}%` }}
             />
           </div>
+          <label className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={filterByClient}
+              onChange={(e) => setFilterByClient(e.target.checked)}
+            />
+            Show only active client&apos;s transactions
+          </label>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button

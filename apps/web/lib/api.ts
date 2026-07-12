@@ -100,7 +100,9 @@ export type MeResponse = {
   organization: { id: string; name: string; slug: string };
 };
 
-import { withClientQuery, getActiveClientId } from "@/lib/active-client";
+import { getActiveClientId } from "@/lib/active-client";
+
+export { clientListPath, getActiveClientId, setActiveClientId } from "@/lib/active-client";
 
 const API_URL = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -146,8 +148,7 @@ export async function apiFetch<T>(
 
 /** Browser-side helper that goes through Next BFF cookie session */
 export async function clientApi<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const scopedPath = withClientQuery(path);
-  const res = await fetch(`/api/proxy${scopedPath}`, {
+  const res = await fetch(`/api/proxy${path}`, {
     ...options,
     headers: {
       ...(options.headers || {}),

@@ -347,13 +347,13 @@ export async function listTransactions(user: SessionUser, params: URLSearchParam
   const limit = Math.min(Number(params.get("limit") || 100), 500);
   const needsReview = params.get("needs_review");
   const documentId = params.get("document_id");
+  const clientId = params.get("client_id");
 
   const filters = [eq(transactions.organizationId, user.organizationId)];
   if (needsReview === "true") filters.push(eq(transactions.needsReview, true));
   if (needsReview === "false") filters.push(eq(transactions.needsReview, false));
   if (documentId) filters.push(eq(transactions.documentId, documentId));
-  const clientId = params.get("client_id");
-  if (clientId) filters.push(eq(transactions.clientId, clientId));
+  else if (clientId) filters.push(eq(transactions.clientId, clientId));
 
   const rows = await db
     .select()

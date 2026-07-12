@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Upload, FileText, Loader2, Trash2, RefreshCw, FileSearch } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { clientApi, uploadDocument, type DocumentItem } from "@/lib/api";
+import { clientApi, uploadDocument, clientListPath, type DocumentItem } from "@/lib/api";
 import { cn, formatMoney } from "@/lib/utils";
 import { ExportWorkingPapersButtons } from "@/components/export-working-papers";
 import { useClientContext } from "@/components/client-provider";
@@ -17,13 +17,15 @@ export default function DocumentsPage() {
   const [uploading, setUploading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [reprocessingId, setReprocessingId] = useState<string | null>(null);
+  const [filterByClient, setFilterByClient] = useState(false);
   const [error, setError] = useState("");
 
   const load = useCallback(() => {
-    clientApi<DocumentItem[]>("/documents")
+    const path = filterByClient && activeClientId ? clientListPath("/documents", activeClientId) : "/documents";
+    clientApi<DocumentItem[]>(path)
       .then(setDocs)
       .catch((e) => setError(e.message));
-  }, []);
+  }, [filterByClient, activeClientId]);
 
   useEffect(() => {
     load();
@@ -114,6 +116,14 @@ export default function DocumentsPage() {
           <p className="mt-1 text-muted-foreground">
             Upload bank statement PDFs for extraction and categorization.
           </p>
+          <label className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={filterByClient}
+              onChange={(e) => setFilterByClient(e.target.checked)}
+            />
+            Show only active client&apos;s documents
+          </label>
         </div>
         {docs.some((d) => d.status === "ready") && (
           <ExportWorkingPapersButtons size="sm" showPdf={false} />

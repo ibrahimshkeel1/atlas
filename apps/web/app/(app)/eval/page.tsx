@@ -156,7 +156,7 @@ export default function EvalDashboardPage() {
       ]);
       setCatalog(catalogRes);
       setBankReport(banks.report);
-      setRun(latest.run);
+      setRun(latest.run ?? null);
       setHistory(runs.runs || []);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load evaluation data");
@@ -250,7 +250,7 @@ export default function EvalDashboardPage() {
           <Card>
             <CardContent className="pt-4">
               <div className="mb-4 flex flex-wrap gap-3 text-xs text-muted-foreground">
-                {Object.entries(catalog.by_category).map(([cat, n]) => (
+                {Object.entries(catalog.by_category || {}).map(([cat, n]) => (
                   <span key={cat} className="rounded-md border border-border/70 px-2 py-1">
                     {cat}: {n}
                   </span>
@@ -365,7 +365,7 @@ export default function EvalDashboardPage() {
       </section>
 
       {/* Broader persisted eval run */}
-      {run && (
+      {run?.extraction && (
         <>
           <p className="text-xs text-muted-foreground">
             Full suite snapshot{" "}
@@ -379,15 +379,15 @@ export default function EvalDashboardPage() {
               <CardContent className="grid gap-6 pt-6 sm:grid-cols-2 lg:grid-cols-5">
                 <Metric
                   label="Statements tested"
-                  value={String(run.extraction.statements_tested)}
+                  value={String(run.extraction?.statements_tested ?? 0)}
                 />
                 <Metric
                   label="Transaction recall"
-                  value={pct(run.extraction.transaction_recall)}
+                  value={pct(run.extraction?.transaction_recall)}
                 />
-                <Metric label="Missing rows" value={String(run.extraction.missing_rows)} />
-                <Metric label="Wrong amounts" value={String(run.extraction.wrong_amounts)} />
-                <Metric label="Wrong dates" value={String(run.extraction.wrong_dates)} />
+                <Metric label="Missing rows" value={String(run.extraction?.missing_rows ?? 0)} />
+                <Metric label="Wrong amounts" value={String(run.extraction?.wrong_amounts ?? 0)} />
+                <Metric label="Wrong dates" value={String(run.extraction?.wrong_dates ?? 0)} />
               </CardContent>
             </Card>
           </section>
@@ -398,20 +398,26 @@ export default function EvalDashboardPage() {
               <CardContent className="grid gap-6 pt-6 sm:grid-cols-2 lg:grid-cols-4">
                 <Metric
                   label="Category accuracy"
-                  value={pct(run.categorization.category_accuracy)}
+                  value={pct(run.categorization?.category_accuracy)}
                   hint={
-                    run.categorization.fixture_count
+                    run.categorization?.fixture_count
                       ? `${run.categorization.fixture_count} labeled fixtures`
                       : "No categorization fixtures"
                   }
                 />
-                <Metric label="Other percentage" value={pct(run.categorization.other_percentage)} />
+                <Metric
+                  label="Other percentage"
+                  value={pct(run.categorization?.other_percentage)}
+                />
                 <Metric
                   label="Review percentage"
-                  value={pct(run.categorization.review_percentage)}
+                  value={pct(run.categorization?.review_percentage)}
                   hint="Share that would need human review"
                 />
-                <Metric label="Fixtures" value={String(run.categorization.fixture_count)} />
+                <Metric
+                  label="Fixtures"
+                  value={String(run.categorization?.fixture_count ?? 0)}
+                />
               </CardContent>
             </Card>
           </section>
@@ -422,15 +428,15 @@ export default function EvalDashboardPage() {
               <CardContent className="grid gap-6 pt-6 sm:grid-cols-3">
                 <Metric
                   label="Balance matches"
-                  value={String(run.reconciliation.balance_matches)}
+                  value={String(run.reconciliation?.balance_matches ?? 0)}
                 />
                 <Metric
                   label="Balance mismatches"
-                  value={String(run.reconciliation.balance_mismatches)}
+                  value={String(run.reconciliation?.balance_mismatches ?? 0)}
                 />
                 <Metric
                   label="Balance unknown"
-                  value={String(run.reconciliation.balance_unknown)}
+                  value={String(run.reconciliation?.balance_unknown ?? 0)}
                 />
               </CardContent>
             </Card>
@@ -442,20 +448,20 @@ export default function EvalDashboardPage() {
               <CardContent className="grid gap-6 pt-6 sm:grid-cols-2 lg:grid-cols-4">
                 <Metric
                   label="OCR usage"
-                  value={`${run.processing.ocr_usage_count}/${run.extraction.statements_tested || 0}`}
+                  value={`${run.processing?.ocr_usage_count ?? 0}/${run.extraction?.statements_tested || 0}`}
                 />
                 <Metric
                   label="AI fallback usage"
-                  value={`${run.processing.ai_fallback_count}/${run.extraction.statements_tested || 0}`}
+                  value={`${run.processing?.ai_fallback_count ?? 0}/${run.extraction?.statements_tested || 0}`}
                 />
-                <Metric label="Failures" value={String(run.processing.failure_count)} />
+                <Metric label="Failures" value={String(run.processing?.failure_count ?? 0)} />
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">Parser used</p>
-                  {Object.keys(run.processing.parser_counts).length === 0 ? (
+                  {Object.keys(run.processing?.parser_counts || {}).length === 0 ? (
                     <p className="font-display text-2xl tracking-tight">—</p>
                   ) : (
                     <ul className="space-y-1 text-sm">
-                      {Object.entries(run.processing.parser_counts).map(([k, v]) => (
+                      {Object.entries(run.processing?.parser_counts || {}).map(([k, v]) => (
                         <li
                           key={k}
                           className="flex justify-between gap-4 border-b border-border/50 pb-1"
@@ -471,7 +477,7 @@ export default function EvalDashboardPage() {
             </Card>
           </section>
 
-          {run.fixtures.length > 0 && (
+          {(run.fixtures?.length ?? 0) > 0 && (
             <section className="space-y-3">
               <h2 className="font-display text-xl tracking-tight">Suite fixture detail</h2>
               <Card>
@@ -540,9 +546,9 @@ export default function EvalDashboardPage() {
                     {h.status}
                   </span>
                   <span>
-                    {h.extraction.statements_tested} stmts · recall{" "}
-                    {pct(h.extraction.transaction_recall)} · cat{" "}
-                    {pct(h.categorization.category_accuracy)}
+                    {h.extraction?.statements_tested ?? 0} stmts · recall{" "}
+                    {pct(h.extraction?.transaction_recall)} · cat{" "}
+                    {pct(h.categorization?.category_accuracy)}
                   </span>
                 </div>
               ))}

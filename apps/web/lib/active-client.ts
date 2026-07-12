@@ -11,7 +11,8 @@ export function setActiveClientId(clientId: string | null) {
   else localStorage.removeItem(STORAGE_KEY);
 }
 
-export function withClientQuery(path: string, clientId?: string | null): string {
+/** Append active client filter for list endpoints only */
+export function clientListPath(path: string, clientId?: string | null): string {
   const id = clientId ?? getActiveClientId();
   if (!id) return path;
   const sep = path.includes("?") ? "&" : "?";

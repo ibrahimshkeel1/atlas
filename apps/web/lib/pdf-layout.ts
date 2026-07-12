@@ -78,6 +78,13 @@ export function buildPageLayouts(pdfData: Pdf2JsonData): PageLayout[] {
   return layouts;
 }
 
+function normTokens(text: string): string[] {
+  return text
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((t) => t.length >= 3);
+}
+
 function dateNeedles(iso: string): string[] {
   if (!iso || iso.length < 10) return [];
   const d = new Date(`${iso}T12:00:00`);
@@ -92,22 +99,6 @@ function dateNeedles(iso: string): string[] {
     `${dd}-${mm}-${yyyy}`,
     iso,
   ];
-}
-
-function normTokens(text: string): string[] {
-  return text
-    .toLowerCase()
-    .split(/[^a-z0-9]+/)
-    .filter((t) => t.length >= 3);
-}
-
-function scoreLine(line: PageLine, description: string): number {
-  const desc = new Set(normTokens(description));
-  if (!desc.size) return 0;
-  const lineTokens = new Set(normTokens(line.text));
-  let score = 0;
-  for (const t of desc) if (lineTokens.has(t)) score += 1;
-  return score;
 }
 
 function bboxPayload(layout: PageLayout, line: PageLine, match: string, needle: string) {
@@ -131,22 +122,33 @@ function bboxPayload(layout: PageLayout, line: PageLine, match: string, needle: 
   };
 }
 
+function scoreLine(line: PageLine, description: string): number {
+  const desc = new Set(normTokens(description));
+  if (!desc.size) return 0;
+  const lineTokens = new Set(normTokens(line.text));
+  let score = 0;
+  for (const t of desc) if (lineTokens.has(t)) score += 1;
+  return score;
+}
+
 export function attachSourceMeta(
   layouts: PageLayout[],
   tx: { transaction_date: string; description: string }
 ): { page_number: number | null; source_meta: Record<string, unknown> | null } {
   const desc = tx.description.trim();
-  const needles = [desc.slice(0, 48), desc.slice(0, 24)].filter((n) => n.length >= 6);
+  const needles = [desc, desc.slice(0, 48), desc.slice(0, 32), desc.slice(0, 24)].filter(
+    (n, i, arr) => n.length >= 6 && arr.indexOf(n) === i
+  );
   const dates = dateNeedles(tx.transaction_date);
 
   for (const layout of layouts) {
-    const lowLines = layout.lines.map((l) => ({ line: l, low: l.text.toLowerCase() }));
     for (const needle of needles) {
-      const hit = lowLines.find((l) => l.low.includes(needle.toLowerCase()));
+      const low = needle.toLowerCase();
+      const hit = layout.lines.find((line) => line.text.toLowerCase().includes(low));
       if (hit) {
         return {
           page_number: layout.page,
-          source_meta: bboxPayload(layout, hit.line, "description", needle),
+          source_meta: bboxPayload(layout, hit, "description", needle),
         };
       }
     }
@@ -159,20 +161,21 @@ export function attachSourceMeta(
       for (const line of layout.lines) {
         if (!line.text.toLowerCase().includes(dl)) continue;
         const s = scoreLine(line, desc);
-        if (!best || s > best.score) best = { score: s, layout, line, needle: dn };
+        const ranked = s > 0 ? s : 1;
+        if (!best || ranked > best.score) best = { score: ranked, layout, line, needle: dn };
       }
     }
   }
-  if (best && best.score > 0) {
-    return {
-      page_number: best.layout.page,
-      source_meta: bboxPayload(best.layout, best.line, "date+desc", best.needle),
-    };
-  }
+
   if (best) {
     return {
       page_number: best.layout.page,
-      source_meta: bboxPayload(best.layout, best.line, "date", best.needle),
+      source_meta: bboxPayload(
+        best.layout,
+        best.line,
+        best.score > 1 ? "date+desc" : "date",
+        best.needle
+      ),
     };
   }
 

@@ -99,7 +99,7 @@ export async function listTransactionsExtended(user: SessionUser, params: URLSea
   if (params.get("needs_review") === "true") filters.push(eq(transactions.needsReview, true));
   if (params.get("needs_review") === "false") filters.push(eq(transactions.needsReview, false));
   if (params.get("document_id")) filters.push(eq(transactions.documentId, params.get("document_id")!));
-  if (params.get("client_id")) filters.push(eq(transactions.clientId, params.get("client_id")!));
+  else if (params.get("client_id")) filters.push(eq(transactions.clientId, params.get("client_id")!));
   if (params.get("date_from")) filters.push(gte(transactions.transactionDate, params.get("date_from")!));
   if (params.get("date_to")) filters.push(lte(transactions.transactionDate, params.get("date_to")!));
 

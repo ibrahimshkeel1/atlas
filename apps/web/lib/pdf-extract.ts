@@ -1,15 +1,9 @@
 import "server-only";
+import { createRequire } from "node:module";
 import { parseBankStatement, type ParseResult, type ParsedTx } from "@/lib/bank-parsers";
 import { attachSourceMeta, buildPageLayouts, type Pdf2JsonData } from "@/lib/pdf-layout";
 
-type PdfParserInstance = {
-  on(event: "pdfParser_dataError", cb: (err: { parserError: Error | string }) => void): void;
-  on(event: "pdfParser_dataReady", cb: (data: Pdf2JsonData) => void): void;
-  getRawTextContent(): string;
-  parseBuffer(buffer: Buffer): void;
-};
-
-type PdfParserCtor = new (context: null, needRawText: boolean) => PdfParserInstance;
+const require = createRequire(import.meta.url);
 
 export type EnrichedTx = ParsedTx & {
   page_number: number | null;
@@ -22,9 +16,18 @@ export type PdfExtraction = ParseResult & {
   transactions: EnrichedTx[];
 };
 
+type PdfParserInstance = {
+  on(event: "pdfParser_dataError", cb: (err: { parserError: Error | string }) => void): void;
+  on(event: "pdfParser_dataReady", cb: (data: Pdf2JsonData) => void): void;
+  getRawTextContent(): string;
+  parseBuffer(buffer: Buffer): void;
+};
+
 async function parsePdfBuffer(buffer: Buffer): Promise<{ text: string; pdfData: Pdf2JsonData }> {
-  const mod = await import("pdf2json");
-  const PDFParser = (mod.default ?? mod) as PdfParserCtor;
+  const PDFParser = require("pdf2json") as new (
+    context: null,
+    needRawText: boolean
+  ) => PdfParserInstance;
 
   return new Promise((resolve, reject) => {
     const parser = new PDFParser(null, true);

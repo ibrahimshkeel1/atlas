@@ -1,6 +1,7 @@
 "use client";
 
-import { Building2, ChevronDown } from "lucide-react";
+import Link from "next/link";
+import { Building2, ChevronDown, Plus } from "lucide-react";
 import { useClientContext } from "@/components/client-provider";
 import { cn } from "@/lib/utils";
 
@@ -15,9 +16,18 @@ export function ClientSwitcher({ className }: { className?: string }) {
 
   if (clients.length <= 1) {
     return (
-      <div className={cn("flex items-center gap-2 text-xs text-muted-foreground", className)}>
-        <Building2 className="h-3.5 w-3.5 shrink-0" />
-        <span className="truncate">{activeClient?.name || "Default client"}</span>
+      <div className={cn("space-y-1.5", className)}>
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Building2 className="h-3.5 w-3.5 shrink-0" />
+          <span className="truncate">{activeClient?.name || "Default client"}</span>
+        </div>
+        <Link
+          href="/settings"
+          className="inline-flex items-center gap-1 text-[11px] text-primary underline-offset-2 hover:underline"
+        >
+          <Plus className="h-3 w-3" />
+          Add another client
+        </Link>
       </div>
     );
   }
