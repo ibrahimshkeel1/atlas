@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Loader2, ZoomIn, ZoomOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { loadBrowserPdfJs, type BrowserPdfDocument } from "@/lib/pdfjs-browser";
 
 export type BBoxNorm = {
   x: number;
@@ -30,7 +31,7 @@ export function PdfHighlightViewer({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const highlightRef = useRef<HTMLDivElement>(null);
-  const pdfRef = useRef<import("pdfjs-dist").PDFDocumentProxy | null>(null);
+  const pdfRef = useRef<BrowserPdfDocument | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [pageCount, setPageCount] = useState(0);
@@ -45,8 +46,7 @@ export function PdfHighlightViewer({
       setLoading(true);
       setError("");
       try {
-        const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
-        pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+        const pdfjs = await loadBrowserPdfJs();
 
         if (pdfRef.current) {
           await pdfRef.current.destroy();
@@ -96,7 +96,7 @@ export function PdfHighlightViewer({
           canvasContext: ctx,
           viewport,
           canvas,
-        } as Parameters<typeof pdfPage.render>[0]).promise;
+        }).promise;
         if (!cancelled) setPulse((n) => n + 1);
       } catch (e) {
         if (!cancelled) {

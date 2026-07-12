@@ -30,3 +30,25 @@ export async function downloadPdf(key: string): Promise<Buffer> {
   if (error || !data) throw new Error(error?.message || "File not found");
   return Buffer.from(await data.arrayBuffer());
 }
+
+export async function uploadReport(orgId: string, filename: string, bytes: Buffer, ext: "xlsx" | "pdf") {
+  const supabase = getSupabaseAdmin();
+  const key = `orgs/${orgId}/reports/${crypto.randomUUID()}/${filename}`;
+  const contentType =
+    ext === "pdf"
+      ? "application/pdf"
+      : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+  const { error } = await supabase.storage.from(STORAGE_BUCKET).upload(key, bytes, {
+    contentType,
+    upsert: false,
+  });
+  if (error) throw new Error(error.message);
+  return key;
+}
+
+export async function createSignedUrl(key: string, expiresIn = 3600) {
+  const supabase = getSupabaseAdmin();
+  const { data, error } = await supabase.storage.from(STORAGE_BUCKET).createSignedUrl(key, expiresIn);
+  if (error || !data?.signedUrl) throw new Error(error?.message || "Could not create download URL");
+  return data.signedUrl;
+}

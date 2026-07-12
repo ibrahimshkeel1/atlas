@@ -100,6 +100,48 @@ export const transactions = pgTable("transactions", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+export const categoryRules = pgTable("category_rules", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  organizationId: uuid("organization_id")
+    .notNull()
+    .references(() => organizations.id),
+  clientId: uuid("client_id").references(() => clients.id),
+  matchType: varchar("match_type", { length: 32 }).notNull().default("contains"),
+  pattern: varchar("pattern", { length: 512 }).notNull(),
+  categoryId: uuid("category_id")
+    .notNull()
+    .references(() => categories.id),
+  priority: integer("priority").notNull().default(100),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const merchants = pgTable("merchants", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  organizationId: uuid("organization_id").references(() => organizations.id),
+  clientId: uuid("client_id").references(() => clients.id),
+  name: varchar("name", { length: 255 }).notNull(),
+  slug: varchar("slug", { length: 128 }).notNull(),
+  categoryId: uuid("category_id").references(() => categories.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const merchantAliases = pgTable("merchant_aliases", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  merchantId: uuid("merchant_id")
+    .notNull()
+    .references(() => merchants.id),
+  organizationId: uuid("organization_id").references(() => organizations.id),
+  clientId: uuid("client_id").references(() => clients.id),
+  pattern: varchar("pattern", { length: 512 }).notNull(),
+  matchType: varchar("match_type", { length: 32 }).notNull().default("contains"),
+  priority: integer("priority").notNull().default(100),
+  source: varchar("source", { length: 32 }).notNull().default("user"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 export const periodCloses = pgTable("period_closes", {
   id: uuid("id").defaultRandom().primaryKey(),
   organizationId: uuid("organization_id")
