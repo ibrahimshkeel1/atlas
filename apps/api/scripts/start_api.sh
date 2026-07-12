@@ -10,6 +10,19 @@ if [ -z "$DATABASE_URL" ]; then
   exit 1
 fi
 
+python - <<'PY'
+from urllib.parse import urlparse
+from app.core.config import get_settings
+
+url = get_settings().resolved_database_url()
+p = urlparse(url)
+print(f"DB driver/host: {p.scheme}://{p.hostname}:{p.port} db={p.path}")
+if not p.hostname:
+    raise SystemExit(
+        "ERROR: DATABASE_URL has no hostname — remove quotes and fix typos in Railway Variables"
+    )
+PY
+
 echo "Running migrations..."
 alembic upgrade head
 echo "Migrations OK"
