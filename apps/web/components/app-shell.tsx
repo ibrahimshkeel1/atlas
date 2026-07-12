@@ -18,6 +18,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { ClientProvider } from "@/components/client-provider";
+import { ClientSwitcher } from "@/components/client-switcher";
 
 const nav = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -52,9 +54,10 @@ export function AppShell({
   }
 
   return (
-    <div className="min-h-screen lg:grid lg:grid-cols-[240px_1fr]">
-      <aside className="border-b border-border/80 bg-white/70 backdrop-blur lg:border-b-0 lg:border-r">
-        <div className="flex h-16 items-center gap-2 px-6">
+    <ClientProvider>
+      <div className="min-h-screen lg:grid lg:grid-cols-[240px_1fr]">
+        <aside className="border-b border-border/80 bg-white/70 backdrop-blur lg:border-b-0 lg:border-r">
+          <div className="flex h-16 items-center gap-2 px-6">
           <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-sm font-semibold text-primary-foreground">
             A
           </div>
@@ -87,6 +90,7 @@ export function AppShell({
           })}
         </nav>
         <div className="mt-auto hidden border-t border-border/80 p-4 lg:block">
+          <ClientSwitcher className="mb-3" />
           <p className="truncate text-sm font-medium">{userName}</p>
           <p className="truncate text-xs text-muted-foreground">{orgName}</p>
           <Button variant="ghost" size="sm" className="mt-3 w-full justify-start" onClick={logout}>
@@ -95,7 +99,13 @@ export function AppShell({
           </Button>
         </div>
       </aside>
-      <main className="px-4 py-6 sm:px-8 sm:py-8">{children}</main>
-    </div>
+        <main className="px-4 py-6 sm:px-8 sm:py-8">
+          <div className="mb-4 lg:hidden">
+            <ClientSwitcher />
+          </div>
+          {children}
+        </main>
+      </div>
+    </ClientProvider>
   );
 }

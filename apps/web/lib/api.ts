@@ -100,6 +100,8 @@ export type MeResponse = {
   organization: { id: string; name: string; slug: string };
 };
 
+import { withClientQuery, getActiveClientId } from "@/lib/active-client";
+
 const API_URL = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export function getApiUrl() {
@@ -144,7 +146,8 @@ export async function apiFetch<T>(
 
 /** Browser-side helper that goes through Next BFF cookie session */
 export async function clientApi<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const res = await fetch(`/api/proxy${path}`, {
+  const scopedPath = withClientQuery(path);
+  const res = await fetch(`/api/proxy${scopedPath}`, {
     ...options,
     headers: {
       ...(options.headers || {}),
@@ -188,11 +191,18 @@ async function getClientAccessToken(): Promise<string> {
  */
 export async function uploadDocument(
   file: File,
-  opts: { force?: boolean } = {}
+  opts: { force?: boolean; clientId?: string | null } = {}
 ): Promise<DocumentItem> {
   const form = new FormData();
   form.append("file", file);
-  const qs = opts.force ? "?force=true" : "";
+  const params = new URLSearchParams();
+  if (opts.force) params.set("force", "true");
+  if (opts.clientId) params.set("client_id", opts.clientId);
+  else {
+    const active = getActiveClientId();
+    if (active) params.set("client_id", active);
+  }
+  const qs = params.toString() ? `?${params}` : "";
   const browserApi = getBrowserApiUrl();
 
   let res: Response;

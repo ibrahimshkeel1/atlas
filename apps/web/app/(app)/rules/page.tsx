@@ -128,28 +128,30 @@ export default function RulesPage() {
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 
-      <Card>
+      <Card className="overflow-visible">
         <CardHeader>
           <CardTitle>Active rules</CardTitle>
-          <CardDescription>
-            Applied before AI/heuristic categories.{" "}
-            <Link
-              href="/transactions?needs_review=true"
-              className="text-primary underline-offset-4 hover:underline"
-            >
-              Review queue
-            </Link>
-            {" · "}
-            <Link href="/documents" className="text-primary underline-offset-4 hover:underline">
-              PDF side-by-side
-            </Link>
-            {" · "}
-            <Link href="/categories" className="text-primary underline-offset-4 hover:underline">
-              Categories
-            </Link>
+          <CardDescription className="max-w-none break-words">
+            <span className="block sm:inline">Applied before AI/heuristic categories.</span>{" "}
+            <span className="mt-1 flex flex-wrap gap-x-2 gap-y-1 sm:mt-0 sm:inline-flex">
+              <Link
+                href="/transactions?needs_review=true"
+                className="text-primary underline-offset-4 hover:underline"
+              >
+                Review queue
+              </Link>
+              <span className="hidden text-muted-foreground sm:inline">·</span>
+              <Link href="/documents" className="text-primary underline-offset-4 hover:underline">
+                PDF side-by-side
+              </Link>
+              <span className="hidden text-muted-foreground sm:inline">·</span>
+              <Link href="/categories" className="text-primary underline-offset-4 hover:underline">
+                Categories
+              </Link>
+            </span>
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-3 overflow-visible">
           {rules.length === 0 && (
             <p className="text-sm text-muted-foreground">
               No rules yet. Correct a category on Transactions to create one.
@@ -158,22 +160,24 @@ export default function RulesPage() {
           {rules.map((rule) => (
             <div
               key={rule.id}
-              className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 py-3 last:border-0"
+              className="flex flex-col gap-3 border-b border-border/60 py-3 last:border-0 sm:flex-row sm:items-center sm:justify-between"
             >
-              <div>
+              <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium">“{rule.pattern}”</p>
                 <p className="text-xs text-muted-foreground">
                   {rule.match_type} · priority {rule.priority}
                 </p>
               </div>
-              <div className="flex items-center gap-2">
-                <CategorySelect
-                  categories={categories}
-                  value={rule.category_id}
-                  onValueChange={(v) => changeCategory(rule.id, v)}
-                  onCategoriesChange={setCategories}
-                  triggerClassName="h-8 w-48"
-                />
+              <div className="flex w-full shrink-0 flex-wrap items-center gap-2 sm:w-auto">
+                <div className="relative min-w-[180px] max-w-full flex-1 sm:flex-none">
+                  <CategorySelect
+                    categories={categories}
+                    value={rule.category_id}
+                    onValueChange={(v) => changeCategory(rule.id, v)}
+                    onCategoriesChange={setCategories}
+                    triggerClassName="h-8 w-full min-w-[180px] max-w-[240px]"
+                  />
+                </div>
                 <Button variant="ghost" size="sm" onClick={() => removeRule(rule.id)}>
                   Delete
                 </Button>

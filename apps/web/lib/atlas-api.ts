@@ -74,6 +74,90 @@ async function ensureDefaultClient(orgId: string) {
   return row;
 }
 
+async function resolveClient(orgId: string, clientId?: string | null) {
+  if (clientId) {
+    const row = (
+      await db
+        .select()
+        .from(clients)
+        .where(and(eq(clients.id, clientId), eq(clients.organizationId, orgId)))
+        .limit(1)
+    )[0];
+    if (row) return row;
+  }
+  return ensureDefaultClient(orgId);
+}
+
+async function persistExtractedDocument(
+  user: SessionUser,
+  docId: string,
+  clientId: string,
+  bytes: Buffer
+) {
+  const { extractTransactionsFromPdf } = await import("@/lib/pdf-extract");
+  const extracted = await extractTransactionsFromPdf(bytes);
+  if (!extracted.transactions.length) {
+    await db
+      .update(documents)
+      .set({
+        status: "failed",
+        errorMessage: "No transactions could be extracted from this PDF",
+        pageCount: extracted.page_count || null,
+        extractionMetaJson: {
+          method: extracted.method,
+          text_chars: extracted.text_chars,
+        },
+        updatedAt: new Date(),
+      })
+      .where(eq(documents.id, docId));
+    return extracted;
+  }
+
+  const other = (
+    await db
+      .select()
+      .from(categories)
+      .where(and(eq(categories.slug, "other"), isNull(categories.organizationId)))
+      .limit(1)
+  )[0];
+
+  for (const tx of extracted.transactions) {
+    await db.insert(transactions).values({
+      organizationId: user.organizationId,
+      clientId,
+      documentId: docId,
+      categoryId: other?.id,
+      transactionDate: tx.transaction_date,
+      description: tx.description,
+      debit: tx.debit,
+      credit: tx.credit,
+      balance: tx.balance,
+      confidenceScore: String(tx.confidence),
+      needsReview: tx.confidence < 0.7 || !other,
+      extractionSource: extracted.method,
+      pageNumber: tx.page_number,
+      sourceMetaJson: tx.source_meta,
+    });
+  }
+
+  await db
+    .update(documents)
+    .set({
+      status: "ready",
+      bankName: extracted.bank_name,
+      pageCount: extracted.page_count || null,
+      extractionMetaJson: {
+        method: extracted.method,
+        text_chars: extracted.text_chars,
+        transaction_count: extracted.transactions.length,
+      },
+      updatedAt: new Date(),
+    })
+    .where(eq(documents.id, docId));
+
+  return extracted;
+}
+
 export async function signup(body: {
   email: string;
   password: string;
@@ -145,11 +229,14 @@ export async function me(user: SessionUser) {
   };
 }
 
-export async function listDocuments(user: SessionUser) {
+export async function listDocuments(user: SessionUser, clientId?: string | null) {
+  const filters = [eq(documents.organizationId, user.organizationId)];
+  if (clientId) filters.push(eq(documents.clientId, clientId));
+
   const docs = await db
     .select()
     .from(documents)
-    .where(eq(documents.organizationId, user.organizationId))
+    .where(and(...filters))
     .orderBy(desc(documents.createdAt));
 
   const counts = await db
@@ -175,7 +262,12 @@ export async function listDocuments(user: SessionUser) {
   }));
 }
 
-export async function uploadDocument(user: SessionUser, file: File, force = false) {
+export async function uploadDocument(
+  user: SessionUser,
+  file: File,
+  force = false,
+  clientId?: string | null
+) {
   if (!file.name.toLowerCase().endsWith(".pdf")) {
     throw new Error("Only PDF files are allowed");
   }
@@ -201,7 +293,7 @@ export async function uploadDocument(user: SessionUser, file: File, force = fals
     }
   }
 
-  const client = await ensureDefaultClient(user.organizationId);
+  const client = await resolveClient(user.organizationId, clientId);
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]+/g, "_");
   const key = await uploadPdf(user.organizationId, safeName, bytes);
 
@@ -218,61 +310,7 @@ export async function uploadDocument(user: SessionUser, file: File, force = fals
     .returning();
 
   try {
-    const { extractTransactionsFromPdf } = await import("@/lib/pdf-extract");
-    const extracted = await extractTransactionsFromPdf(bytes);
-    if (!extracted.transactions.length) {
-      await db
-        .update(documents)
-        .set({
-          status: "failed",
-          errorMessage: "No transactions could be extracted from this PDF",
-          extractionMetaJson: {
-            method: extracted.method,
-            text_chars: extracted.text_chars,
-          },
-          updatedAt: new Date(),
-        })
-        .where(eq(documents.id, doc.id));
-    } else {
-      const other = (
-        await db
-          .select()
-          .from(categories)
-          .where(and(eq(categories.slug, "other"), isNull(categories.organizationId)))
-          .limit(1)
-      )[0];
-
-      for (const tx of extracted.transactions) {
-        await db.insert(transactions).values({
-          organizationId: user.organizationId,
-          clientId: client.id,
-          documentId: doc.id,
-          categoryId: other?.id,
-          transactionDate: tx.transaction_date,
-          description: tx.description,
-          debit: tx.debit,
-          credit: tx.credit,
-          balance: tx.balance,
-          confidenceScore: String(tx.confidence),
-          needsReview: tx.confidence < 0.7 || !other,
-          extractionSource: extracted.method,
-        });
-      }
-
-      await db
-        .update(documents)
-        .set({
-          status: "ready",
-          bankName: extracted.bank_name,
-          extractionMetaJson: {
-            method: extracted.method,
-            text_chars: extracted.text_chars,
-            transaction_count: extracted.transactions.length,
-          },
-          updatedAt: new Date(),
-        })
-        .where(eq(documents.id, doc.id));
-    }
+    await persistExtractedDocument(user, doc.id, client.id, bytes);
   } catch (e) {
     await db
       .update(documents)
@@ -314,6 +352,8 @@ export async function listTransactions(user: SessionUser, params: URLSearchParam
   if (needsReview === "true") filters.push(eq(transactions.needsReview, true));
   if (needsReview === "false") filters.push(eq(transactions.needsReview, false));
   if (documentId) filters.push(eq(transactions.documentId, documentId));
+  const clientId = params.get("client_id");
+  if (clientId) filters.push(eq(transactions.clientId, clientId));
 
   const rows = await db
     .select()
@@ -419,56 +459,7 @@ export async function reprocessDocument(user: SessionUser, id: string) {
 
   try {
     const bytes = await downloadPdf(doc.s3Key);
-    const { extractTransactionsFromPdf } = await import("@/lib/pdf-extract");
-    const extracted = await extractTransactionsFromPdf(bytes);
-    if (!extracted.transactions.length) {
-      await db
-        .update(documents)
-        .set({
-          status: "failed",
-          errorMessage: "No transactions could be extracted from this PDF",
-          extractionMetaJson: { method: extracted.method, text_chars: extracted.text_chars },
-          updatedAt: new Date(),
-        })
-        .where(eq(documents.id, id));
-    } else {
-      const other = (
-        await db
-          .select()
-          .from(categories)
-          .where(and(eq(categories.slug, "other"), isNull(categories.organizationId)))
-          .limit(1)
-      )[0];
-      for (const tx of extracted.transactions) {
-        await db.insert(transactions).values({
-          organizationId: user.organizationId,
-          clientId: doc.clientId,
-          documentId: doc.id,
-          categoryId: other?.id,
-          transactionDate: tx.transaction_date,
-          description: tx.description,
-          debit: tx.debit,
-          credit: tx.credit,
-          balance: tx.balance,
-          confidenceScore: String(tx.confidence),
-          needsReview: tx.confidence < 0.7,
-          extractionSource: extracted.method,
-        });
-      }
-      await db
-        .update(documents)
-        .set({
-          status: "ready",
-          bankName: extracted.bank_name,
-          extractionMetaJson: {
-            method: extracted.method,
-            text_chars: extracted.text_chars,
-            transaction_count: extracted.transactions.length,
-          },
-          updatedAt: new Date(),
-        })
-        .where(eq(documents.id, id));
-    }
+    await persistExtractedDocument(user, id, doc.clientId!, bytes);
   } catch (e) {
     await db
       .update(documents)

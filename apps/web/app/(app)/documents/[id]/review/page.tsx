@@ -384,11 +384,12 @@ export default function DocumentReviewPage() {
       </p>
       {missingHighlights && (
         <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950">
-          Line highlighting needs a fresh extract. Open{" "}
+          PDF line highlights are missing for this statement. Open{" "}
           <Link href="/documents" className="underline underline-offset-2">
             Documents
           </Link>{" "}
-          and click <span className="font-medium">Reprocess</span> on this statement.
+          and click <span className="font-medium">Reprocess</span> once more to rebuild highlight
+          boxes from the PDF layout.
         </p>
       )}
 

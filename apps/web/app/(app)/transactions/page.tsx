@@ -27,8 +27,10 @@ import {
   type Transaction,
 } from "@/lib/api";
 import { cn, formatMoney } from "@/lib/utils";
+import { useClientContext } from "@/components/client-provider";
 
 export default function TransactionsPage() {
+  const { activeClientId } = useClientContext();
   const [rows, setRows] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [q, setQ] = useState("");
@@ -77,7 +79,7 @@ export default function TransactionsPage() {
 
   useEffect(() => {
     load();
-  }, [load]);
+  }, [load, activeClientId]);
 
   rowsRef.current = rows;
   activeIdRef.current = activeId;

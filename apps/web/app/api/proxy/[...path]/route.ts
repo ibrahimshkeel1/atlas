@@ -27,15 +27,20 @@ async function handle(req: NextRequest, pathSegments: string[]) {
 
     // Documents
     if (path === "documents" && method === "GET") {
-      return NextResponse.json(await api.listDocuments(user));
+      const clientId = new URL(req.url).searchParams.get("client_id");
+      return NextResponse.json(await api.listDocuments(user, clientId));
     }
     if (path === "documents/upload" && method === "POST") {
       const form = await req.formData();
       const file = form.get("file");
       if (!(file instanceof File)) return jsonError("file required");
-      const force = new URL(req.url).searchParams.get("force") === "true";
+      const sp = new URL(req.url).searchParams;
+      const force = sp.get("force") === "true";
+      const clientId = sp.get("client_id");
       try {
-        return NextResponse.json(await api.uploadDocument(user, file, force), { status: 201 });
+        return NextResponse.json(await api.uploadDocument(user, file, force, clientId), {
+          status: 201,
+        });
       } catch (e) {
         const err = e as Error & { status?: number };
         return jsonError(err.message, err.status || 400);
@@ -157,6 +162,14 @@ async function handle(req: NextRequest, pathSegments: string[]) {
     }
     if (path === "reports/export" && method === "POST") {
       return NextResponse.json(await port.exportReport(user, await req.json()));
+    }
+
+    // Clients
+    if (path === "clients" && method === "GET") {
+      return NextResponse.json(await port.listClientsApi(user));
+    }
+    if (path === "clients" && method === "POST") {
+      return NextResponse.json(await port.createClientApi(user, await req.json()), { status: 201 });
     }
 
     // Merchants

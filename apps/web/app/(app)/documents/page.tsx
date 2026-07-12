@@ -8,8 +8,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { clientApi, uploadDocument, type DocumentItem } from "@/lib/api";
 import { cn, formatMoney } from "@/lib/utils";
 import { ExportWorkingPapersButtons } from "@/components/export-working-papers";
+import { useClientContext } from "@/components/client-provider";
 
 export default function DocumentsPage() {
+  const { activeClientId } = useClientContext();
   const [docs, setDocs] = useState<DocumentItem[]>([]);
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -27,7 +29,7 @@ export default function DocumentsPage() {
     load();
     const id = setInterval(load, 4000);
     return () => clearInterval(id);
-  }, [load]);
+  }, [load, activeClientId]);
 
   async function upload(file: File) {
     setUploading(true);

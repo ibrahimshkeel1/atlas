@@ -242,8 +242,8 @@ export default function EvalDashboardPage() {
           <div>
             <h2 className="font-display text-xl tracking-tight">Pakistan banks</h2>
             <p className="text-sm text-muted-foreground">
-              {catalog.total} institutions · {catalog.by_parser_status.supported || 0} with
-              dedicated parsers · {catalog.by_parser_status.planned || 0} detection-ready
+              {catalog.total} institutions · {catalog.by_parser_status?.supported || 0} with
+              dedicated parsers · {catalog.by_parser_status?.planned || 0} detection-ready
               (fixtures pending)
             </p>
           </div>
