@@ -103,12 +103,38 @@ function parseUbl(text: string): ParseResult {
   return { bank_name: txs.length ? "UBL" : null, transactions: txs, method: "ubl" };
 }
 
+function parseNayapay(text: string): ParseResult {
+  const lineRe =
+    /(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4})\s+(.+?)([+-])Rs\.\s*([\d,]+\.?\d*)\s+Rs\.\s*([\d,]+\.\d{2})/gi;
+  const seen = new Set<string>();
+  const txs: ParsedTx[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = lineRe.exec(text))) {
+    const d = new Date(m[1]);
+    if (Number.isNaN(d.getTime())) continue;
+    const iso = d.toISOString().slice(0, 10);
+    const sign = m[3];
+    const amount = money(m[4]);
+    const debit = sign === "-" ? amount : null;
+    const credit = sign === "+" ? amount : null;
+    const desc = m[2]
+      .replace(/\s{2,}/g, " ")
+      .replace(/^(?:Raast\s+(?:In|Out)|POS|Peer to Peer|Failed Int\.)\s+/i, "")
+      .trim();
+    const tx = makeTx(iso, desc, debit, credit, money(m[5]), 0.82, seen);
+    if (tx) txs.push(tx);
+  }
+  return { bank_name: txs.length ? "NayaPay" : null, transactions: txs, method: "nayapay" };
+}
+
 export function parseBankStatement(text: string): ParseResult {
   const low = text.toLowerCase();
   const candidates = [
+    low.includes("nayapay") || low.includes("naya pay") ? parseNayapay(text) : null,
     low.includes("meezan") ? parseMeezan(text) : null,
     low.includes("hbl") || low.includes("habib") ? parseHbl(text) : null,
     low.includes("ubl") || low.includes("united bank") ? parseUbl(text) : null,
+    parseNayapay(text),
     parseMeezan(text),
     parseHbl(text),
     parseUbl(text),

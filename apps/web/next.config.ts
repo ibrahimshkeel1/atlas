@@ -1,9 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["unpdf", "pdfkit", "exceljs"],
+  serverExternalPackages: ["pdf2json", "pdfkit", "exceljs"],
   outputFileTracingIncludes: {
-    "/api/proxy/[...path]": ["./node_modules/unpdf/dist/**/*"],
+    "/api/proxy/[...path]": ["./node_modules/pdf2json/dist/**/*"],
   },
 };
 
