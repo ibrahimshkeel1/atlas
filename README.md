@@ -1,6 +1,12 @@
 # Atlas Finance AI
 
+[![Live Demo](https://img.shields.io/badge/demo-atlas--beige--six.vercel.app-38B2AC?style=flat-square)](https://atlas-beige-six.vercel.app)
+[![Next.js](https://img.shields.io/badge/Next.js-15-black?style=flat-square&logo=next.js)](https://nextjs.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-Python-009688?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com)
+
 Bank statement PDF → structured transactions → categories → dashboard → Excel/PDF reports.
+
+AI-powered finance tooling for SMEs and CA firms — upload a bank statement, get categorized transactions, dashboards, and exportable reports.
 
 ## Stack
 
@@ -13,8 +19,6 @@ Bank statement PDF → structured transactions → categories → dashboard → 
 
 **Production deploy:** [DEPLOY-VERCEL-SUPABASE.md](./DEPLOY-VERCEL-SUPABASE.md)  
 **Docker staging:** [DEPLOY.md](./DEPLOY.md)
-
-## Quick start
 
 ## Quick start (no Docker)
 
